@@ -73,8 +73,6 @@ static struct cat_command cmds[] = {
         }
 };
 
-static uint8_t cmds_state[sizeof(cmds) / sizeof(cmds[0])];
-
 static char buf[128];
 
 static struct cat_descriptor desc = {
