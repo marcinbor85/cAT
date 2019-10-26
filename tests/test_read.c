@@ -45,7 +45,7 @@ static int a_run(const char *name)
         return 0;
 }
 
-static int a_read(const char *name, char *data, size_t *data_size, const size_t max_data_size)
+static int a_read(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         strcat(read_results, " A:");
         strcat(read_results, name);
@@ -56,7 +56,7 @@ static int a_read(const char *name, char *data, size_t *data_size, const size_t 
         return 0;
 }
 
-static int ap_read(const char *name, char *data, size_t *data_size, const size_t max_data_size)
+static int ap_read(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         strcat(read_results, " AP:");
         strcat(read_results, name);
@@ -66,7 +66,7 @@ static int ap_read(const char *name, char *data, size_t *data_size, const size_t
         return 0;
 }
 
-static int test_read(const char *name, char *data, size_t *data_size, const size_t max_data_size)
+static int test_read(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         strcat(read_results, " +TEST:");
         strcat(read_results, name);
@@ -111,6 +111,7 @@ int write_char(char ch)
         str[0] = ch;
         str[1] = 0;
         strcat(ack_results, str);
+        return 1;
 }
 
 int read_char(char *ch)

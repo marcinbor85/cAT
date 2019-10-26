@@ -105,6 +105,7 @@ int write_char(char ch)
         str[0] = ch;
         str[1] = 0;
         strcat(ack_results, str);
+        return 1;
 }
 
 int read_char(char *ch)
