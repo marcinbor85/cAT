@@ -196,6 +196,11 @@ static void prepare_search_command(struct cat_object *self)
         self->cmd_index = SIZE_MAX;
 }
 
+static int is_valid_char(const char ch)
+{
+        return (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '+');
+}
+
 static int parse_command(struct cat_object *self)
 {
         assert(self != NULL);
@@ -232,11 +237,8 @@ static int parse_command(struct cat_object *self)
                 self->state = CAT_STATE_ERROR;
                 break;
         default:
-                if ((self->current_char >= 'A' && self->current_char <= 'Z') ||
-                        (self->current_char >= '0' && self->current_char <= '9') ||
-                        (self->current_char == '+')) {
+                if (is_valid_char(self->current_char) != 0) {
                         self->length++;
-
                         self->state = CAT_STATE_UPDATE_COMMAND_STATE;
                         break;
                 }
