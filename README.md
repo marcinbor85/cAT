@@ -13,7 +13,7 @@ Plain C library for parsing AT commands.
 * object-oriented architecture
 * separated interface for low-level layer
 * multiplatform and portable
-* asynchronous api with event callbacks
+* asynchronous api (only 2 functions) with event callbacks
 * only two source files
 * unit tests
 
@@ -56,7 +56,7 @@ Define AT command parser descriptor:
 
 ```c
 
-static char buf[128]; /* working buffer, must be declared manually */
+static char working_buf[128]; /* working buffer, must be declared manually */
 
 static struct cat_descriptor desc = {
         .cmd = cmds,
