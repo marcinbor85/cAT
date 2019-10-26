@@ -93,7 +93,6 @@ struct cat_object {
 
         size_t cmd_index;
         cat_cmd_type cmd_type;
-        bool cmd_found;
 
         char current_char;
         cat_state state;

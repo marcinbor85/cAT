@@ -189,8 +189,7 @@ static void prepare_search_command(struct cat_object *self)
         assert(self != NULL);
 
         self->index = 0;        
-        self->cmd_index = 0;
-        self->cmd_found = false;
+        self->cmd_index = SIZE_MAX;
 }
 
 static int parse_command(struct cat_object *self)
@@ -325,12 +324,11 @@ static int search_command(struct cat_object *self)
 
         if (cmd_state != CAT_CMD_STATE_NOT_MATCH) {
                 if (cmd_state == CAT_CMD_STATE_PARTIAL_MATCH) {
-                        if (self->cmd_found != false) {
+                        if (self->cmd_index != SIZE_MAX) {
                                 self->state = CAT_STATE_COMMAND_NOT_FOUND;
                                 return 1;
                         }
                         self->cmd_index = self->index;
-                        self->cmd_found = true;
                 } else if (cmd_state == CAT_CMD_STATE_FULL_MATCH) {
                         self->cmd_index = self->index;
                         self->state = CAT_STATE_COMMAND_FOUND;
@@ -339,7 +337,7 @@ static int search_command(struct cat_object *self)
         }
 
         if (++self->index >= self->desc->cmd_num) {
-                if (self->cmd_found == false) {
+                if (self->cmd_index == SIZE_MAX) {
                         self->state = CAT_STATE_COMMAND_NOT_FOUND;
                 } else {
                         self->state = CAT_STATE_COMMAND_FOUND;
