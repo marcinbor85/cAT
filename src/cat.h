@@ -33,8 +33,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
-typedef int (*cat_cmd_write_handler)(char *buf, size_t argc);
-typedef int (*cat_cmd_read_handler)(char *buf, size_t *argc);
+typedef int (*cat_cmd_write_handler)(const char *name, const char *data, const size_t data_size);
+typedef int (*cat_cmd_read_handler)(const char *name, char *data, size_t *data_size, const size_t max_data_size);
 typedef int (*cat_cmd_run_handler)(const char *name);
 
 typedef enum {
