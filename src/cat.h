@@ -33,10 +33,14 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
+/* write command function handler */
 typedef int (*cat_cmd_write_handler)(const char *name, const uint8_t *data, const size_t data_size);
+/* read command function handler */
 typedef int (*cat_cmd_read_handler)(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size);
+/* run command function handler */
 typedef int (*cat_cmd_run_handler)(const char *name);
 
+/* enum type with main at parser fsm state */
 typedef enum {
         CAT_STATE_ERROR = -1,
         CAT_STATE_PARSE_PREFIX,
@@ -49,54 +53,76 @@ typedef enum {
         CAT_STATE_PARSE_COMMAND_ARGS
 } cat_state;
 
+/* enum type with prefix parser fsm state */
 typedef enum {
         CAT_PREFIX_STATE_WAIT_A = 0,
         CAT_PREFIX_STATE_WAIT_T,
 } cat_prefix_state;
 
+/* enum type with type of command request */
 typedef enum {
         CAT_CMD_TYPE_EXECUTE = 0,
         CAT_CMD_TYPE_READ,
         CAT_CMD_TYPE_WRITE
 } cat_cmd_type;
 
+/* structure with io interface functions */
 struct cat_io_interface {
-	int (*write)(char ch);
-	int (*read)(char *ch);
+	int (*write)(char ch); /* write char to output stream. return 1 if byte wrote successfully. */
+	int (*read)(char *ch); /* read char from input stream. return 1 if byte read successfully. */
 };
 
+/* structure with at command descriptor */
 struct cat_command {
-	const char *name;
+	const char *name; /* at command name (case-insensitivity) */
 
-	cat_cmd_write_handler write;
-	cat_cmd_read_handler read;
-	cat_cmd_run_handler run;
+	cat_cmd_write_handler write; /* write command handler */
+	cat_cmd_read_handler read; /* read command handler */
+	cat_cmd_run_handler run; /* run command handler */
 };
 
+/* structure with at command parser descriptor */
 struct cat_descriptor {
-	struct cat_command const *cmd;
-	size_t cmd_num;
+	struct cat_command const *cmd; /* pointer to array of commands descriptor */
+	size_t cmd_num; /* number of commands in array */
 
-        uint8_t *buf;
-        size_t buf_size;
+        uint8_t *buf; /* pointer to working buffer (used to parse command argument and command states) */
+        size_t buf_size; /* working buffer length */
 };
 
+/* structure with main at command parser object */
 struct cat_object {
-	struct cat_descriptor const *desc;
-	struct cat_io_interface const *iface;
+	struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
+	struct cat_io_interface const *iface; /* pointer to at command parser io interface */
 
-        size_t index;
-        size_t length;
+        size_t index; /* index used to iterate over commands */
+        size_t length; /* length of input command name and command arguments */
 
-        struct cat_command const *cmd;
-        cat_cmd_type cmd_type;
+        struct cat_command const *cmd; /* pointer to current command descriptor */
+        cat_cmd_type cmd_type; /* type of command request */
 
-        char current_char;
-        cat_state state;
-        cat_prefix_state prefix_state;
+        char current_char; /* current received char from input stream */
+        cat_state state; /* current fsm state */
+        cat_prefix_state prefix_state; /* current prefix fsm state */
 };
 
+/**
+ * Function used to initialize at command parser.
+ * Initialize starting values of object fields.
+ * 
+ * @param self pointer to at command parser object to initialize
+ * @param desc pointer to at command parser descriptor
+ * @param iface pointer to at command parser io low-level layer interface
+ */
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface);
+
+/**
+ * Function must be called periodically to asynchronoulsy run at command parser.
+ * Commands handlers will be call from this function context.
+ * 
+ * @param self pointer to at command parser object to initialize
+ * @return 0 - nothing to do, waiting for input char, 1 - busy, parsing in progress.
+ */
 int cat_service(struct cat_object *self);
 
 #ifdef __cplusplus
