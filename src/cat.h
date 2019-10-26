@@ -45,7 +45,8 @@ typedef enum {
         CAT_STATE_WAIT_ACKNOWLEDGE,
         CAT_STATE_SEARCH_COMMAND,
         CAT_STATE_COMMAND_FOUND,
-        CAT_STATE_COMMAND_NOT_FOUND
+        CAT_STATE_COMMAND_NOT_FOUND,
+        CAT_STATE_PARSE_COMMAND_ARGS
 } cat_state;
 
 typedef enum {
@@ -87,7 +88,7 @@ struct cat_object {
         size_t index;
         size_t length;
 
-        size_t cmd_index;
+        struct cat_command const *cmd;
         cat_cmd_type cmd_type;
 
         char current_char;
