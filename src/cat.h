@@ -78,24 +78,20 @@ struct cat_command {
 
 struct cat_descriptor {
 	struct cat_command const *cmd;
-        uint8_t *cmd_state;
 	size_t cmd_num;
 
-        char *args_buf;
-        size_t args_buf_size;
+        char *buf;
+        size_t buf_size;
 };
 
-/**
- * Structure with object internal data fields.
- */
 struct cat_object {
 	struct cat_descriptor const *desc;
 	struct cat_io_interface const *iface;
 
-        size_t cmd_current_index;
+        size_t index;
         size_t cmd_current_length;
         size_t cmd_candidate_index;
-        size_t args_buf_current_index;
+        size_t buf_current_index;
         
         char current_char;
         cat_state state;

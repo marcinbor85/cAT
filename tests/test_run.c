@@ -93,11 +93,10 @@ static char buf[128];
 
 static struct cat_descriptor desc = {
         .cmd = cmds,
-        .cmd_state = cmds_state,
         .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
 
-        .args_buf = buf,
-        .args_buf_size = sizeof(buf),
+        .buf = buf,
+        .buf_size = sizeof(buf),
 };
 
 int write_char(char ch)

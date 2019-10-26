@@ -77,20 +77,24 @@ static int read_cmd_char(struct cat_object *self)
 
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface)
 {
+        size_t i;
+
         assert(self != NULL);
         assert(desc != NULL);
         assert(iface != NULL);
 
-        assert(desc->args_buf != NULL);
-        assert(desc->args_buf_size > 0);
-        
         assert(desc->cmd != NULL);
-        assert(desc->cmd_state != NULL);
         assert(desc->cmd_num > 0);
 
+        assert(desc->buf != NULL);
+        assert(desc->buf_size * 4U >= desc->cmd_num);
+        
         self->desc = desc;
         self->iface = iface;
 
+        for (i = 0; i < self->desc->cmd_num; i++)
+                assert(self->desc->cmd[i].name != NULL);
+                
         reset_state(self);
 }
 
@@ -115,8 +119,8 @@ static void prepare_parse_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        memset(self->desc->cmd_state, 1, self->desc->cmd_num);
-        self->cmd_current_index = 0;
+        memset(self->desc->buf, 0x55, self->desc->buf_size);
+        self->index = 0;
         self->cmd_current_length = 0;
         self->cmd_type = CAT_CMD_TYPE_EXECUTE;
 }
@@ -168,7 +172,7 @@ static void prepare_search_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        self->cmd_current_index = 0;        
+        self->index = 0;        
         self->cmd_candidate_index = 0;
         self->cmd_found = false;
 }
@@ -223,28 +227,53 @@ static int parse_command(struct cat_object *self)
         return 1;
 }
 
+static uint8_t get_cmd_state(struct cat_object *self, size_t i)
+{
+        uint8_t s;
+
+        s = self->desc->buf[i >> 2];
+        s >>= (i % 4) << 1;
+        s &= 0x03;
+
+        return s;
+}
+
+static void set_cmd_state(struct cat_object *self, size_t i, uint8_t state)
+{
+        uint8_t s;
+        size_t n;
+        uint8_t k;
+
+        n = i >> 2;
+        k = ((i % 4) << 1);
+
+        s = self->desc->buf[n];
+        s &= ~(0x03 << k);
+        s |= (state & 0x03) << k;
+        self->desc->buf[n] = s;
+}
+
 static int update_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        struct cat_command const *cmd = &self->desc->cmd[self->cmd_current_index];
-        uint8_t *cmd_state = &self->desc->cmd_state[self->cmd_current_index];
+        struct cat_command const *cmd = &self->desc->cmd[self->index];
         size_t cmd_name_len;
 
-        if (*cmd_state != CAT_CMD_STATE_NOT_MATCH) {
+        if (get_cmd_state(self, self->index) != CAT_CMD_STATE_NOT_MATCH) {
                 cmd_name_len = strlen(cmd->name);
 
                 if (self->cmd_current_length > cmd_name_len) {
-                        *cmd_state = CAT_CMD_STATE_NOT_MATCH;
+                        set_cmd_state(self, self->index, CAT_CMD_STATE_NOT_MATCH);
                 } else if (to_upper(cmd->name[self->cmd_current_length - 1]) != self->current_char) {
-                        *cmd_state = CAT_CMD_STATE_NOT_MATCH;
+                        set_cmd_state(self, self->index, CAT_CMD_STATE_NOT_MATCH);
                 } else if (self->cmd_current_length == cmd_name_len) {
-                        *cmd_state = CAT_CMD_STATE_FULL_MATCH;
+                        set_cmd_state(self, self->index, CAT_CMD_STATE_FULL_MATCH);
                 }
         }
 
-        if (++self->cmd_current_index >= self->desc->cmd_num) {
-                self->cmd_current_index = 0;
+        if (++self->index >= self->desc->cmd_num) {
+                self->index = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_CHAR;
         }
 
@@ -276,7 +305,7 @@ static int search_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        uint8_t cmd_state = self->desc->cmd_state[self->cmd_current_index];
+        uint8_t cmd_state = get_cmd_state(self, self->index);
 
         if (cmd_state != CAT_CMD_STATE_NOT_MATCH) {
                 if (cmd_state == CAT_CMD_STATE_PARTIAL_MATCH) {
@@ -284,16 +313,16 @@ static int search_command(struct cat_object *self)
                                 self->state = CAT_STATE_COMMAND_NOT_FOUND;
                                 return 1;
                         }
-                        self->cmd_candidate_index = self->cmd_current_index;
+                        self->cmd_candidate_index = self->index;
                         self->cmd_found = true;
                 } else if (cmd_state == CAT_CMD_STATE_FULL_MATCH) {
-                        self->cmd_candidate_index = self->cmd_current_index;
+                        self->cmd_candidate_index = self->index;
                         self->state = CAT_STATE_COMMAND_FOUND;
                         return 1;
                 }
         }
 
-        if (++self->cmd_current_index >= self->desc->cmd_num) {
+        if (++self->index >= self->desc->cmd_num) {
                 if (self->cmd_found == false) {
                         self->state = CAT_STATE_COMMAND_NOT_FOUND;
                 } else {
@@ -328,12 +357,13 @@ static int command_found(struct cat_object *self)
                 break;
         case CAT_CMD_TYPE_READ:
                 if (cmd->read != NULL) {
-                        if (cmd->read(self->desc->args_buf, &size) == 0) {
-                                self->args_buf_current_index = 0;
+                        if (cmd->read(self->desc->buf, &size) == 0) {
+                                self->buf_current_index = 0;
                                 print_string(self->iface, cmd->name);
                                 print_string(self->iface, "=");
                                 while (size-- > 0)
-                                        self->iface->write(self->desc->args_buf[self->args_buf_current_index++]);
+                                        self->iface->write(self->desc->buf[self->buf_current_index++]);
+                                print_string(self->iface, "\n");
                         }
                 }
                 ack_error(self);
