@@ -27,6 +27,10 @@ SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
+#define CAT_CMD_STATE_NOT_MATCH          (0)
+#define CAT_CMD_STATE_PARTIAL_MATCH      (1U)
+#define CAT_CMD_STATE_FULL_MATCH         (2U)
+
 static char to_upper(char ch)
 {
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;

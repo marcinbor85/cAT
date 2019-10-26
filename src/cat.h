@@ -59,10 +59,6 @@ typedef enum {
         CAT_CMD_TYPE_WRITE
 } cat_cmd_type;
 
-#define CAT_CMD_STATE_NOT_MATCH          (0)
-#define CAT_CMD_STATE_PARTIAL_MATCH      (1U)
-#define CAT_CMD_STATE_FULL_MATCH         (2U)
-
 struct cat_io_interface {
 	int (*write)(char ch);
 	int (*read)(char *ch);
