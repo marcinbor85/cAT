@@ -72,7 +72,7 @@ Define IO low-level layer interface:
 ```c
 static int write_char(char ch)
 {
-        putc(ch);
+        putc(ch, stdout);
         return 1;
 }
 
