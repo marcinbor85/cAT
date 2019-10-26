@@ -11,7 +11,7 @@ Plain C library for parsing AT commands.
 * case-insensitive
 * dedicated for embedded systems
 * object-oriented architecture
-* separated generic low-layer
+* separated interface for low-level layer
 * multiplatform and portable
 * asynchronous api with event callbacks
 * only two source files
