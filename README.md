@@ -70,13 +70,13 @@ static struct cat_descriptor desc = {
 Define IO low-level layer interface:
 
 ```c
-int write_char(char ch)
+static int write_char(char ch)
 {
         putc(ch);
         return 1;
 }
 
-int read_char(char *ch)
+static int read_char(char *ch)
 {
         *ch = getch();
         return 1;

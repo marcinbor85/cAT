@@ -103,7 +103,7 @@ static struct cat_descriptor desc = {
         .buf_size = sizeof(buf),
 };
 
-int write_char(char ch)
+static int write_char(char ch)
 {
         char str[2];
         str[0] = ch;
@@ -112,7 +112,7 @@ int write_char(char ch)
         return 1;
 }
 
-int read_char(char *ch)
+static int read_char(char *ch)
 {
         if (input_index >= strlen(input_text))
                 return 0;
