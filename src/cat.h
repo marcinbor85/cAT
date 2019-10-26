@@ -33,8 +33,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
-typedef int (*cat_cmd_write_handler)(const char *name, const char *data, const size_t data_size);
-typedef int (*cat_cmd_read_handler)(const char *name, char *data, size_t *data_size, const size_t max_data_size);
+typedef int (*cat_cmd_write_handler)(const char *name, const uint8_t *data, const size_t data_size);
+typedef int (*cat_cmd_read_handler)(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size);
 typedef int (*cat_cmd_run_handler)(const char *name);
 
 typedef enum {
@@ -80,7 +80,7 @@ struct cat_descriptor {
 	struct cat_command const *cmd;
 	size_t cmd_num;
 
-        char *buf;
+        uint8_t *buf;
         size_t buf_size;
 };
 
@@ -89,15 +89,15 @@ struct cat_object {
 	struct cat_io_interface const *iface;
 
         size_t index;
-        size_t cmd_current_length;
-        size_t cmd_candidate_index;
-        size_t buf_current_index;
-        
+        size_t length;
+
+        size_t cmd_index;
+        cat_cmd_type cmd_type;
+        bool cmd_found;
+
         char current_char;
         cat_state state;
         cat_prefix_state prefix_state;
-        cat_cmd_type cmd_type;
-        bool cmd_found;
 };
 
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface);
