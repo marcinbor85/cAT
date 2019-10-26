@@ -7,6 +7,7 @@ Plain C library for parsing AT commands.
 * very small footprint (both RAM and ROM)
 * commands shortcuts (auto select best command candidate)
 * CRLF and LF compatible
+* case-insensitive
 * dedicated for embedded systems
 * asynchronous api with events callbacks
 * only two source files
