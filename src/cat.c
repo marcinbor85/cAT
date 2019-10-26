@@ -356,17 +356,25 @@ static int command_found(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_CMD_TYPE_READ:
-                if (cmd->read != NULL) {
-                        if (cmd->read(self->desc->buf, &size) == 0) {
-                                self->buf_current_index = 0;
-                                print_string(self->iface, cmd->name);
-                                print_string(self->iface, "=");
-                                while (size-- > 0)
-                                        self->iface->write(self->desc->buf[self->buf_current_index++]);
-                                print_string(self->iface, "\n");
-                        }
+                if (cmd->read == NULL) {
+                        ack_error(self);
+                        break;
                 }
-                ack_error(self);
+                if (cmd->read(cmd->name, self->desc->buf, &size, self->desc->buf_size) != 0) {
+                        ack_error(self);
+                        break;
+                }
+                print_string(self->iface, "\n");
+                print_string(self->iface, cmd->name);
+                print_string(self->iface, "=");
+
+                self->buf_current_index = 0;
+                while (size-- > 0)
+                        self->iface->write(self->desc->buf[self->buf_current_index++]);
+
+                print_string(self->iface, "\n");
+
+                ack_ok(self);
                 break;
         case CAT_CMD_TYPE_WRITE:
                 ack_error(self);
