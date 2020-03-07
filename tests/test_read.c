@@ -38,17 +38,17 @@ static char ack_results[256];
 static char const *input_text;
 static size_t input_index;
 
-static int a_run(const char *name)
+static int a_run(const struct cat_command *cmd)
 {
         strcat(run_results, " A_");
-        strcat(run_results, name);
+        strcat(run_results, cmd->name);
         return 0;
 }
 
-static int a_read(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size)
+static int a_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         strcat(read_results, " A:");
-        strcat(read_results, name);
+        strcat(read_results, cmd->name);
 
         snprintf(data, max_data_size, "A-val");
         *data_size = strlen(data);
@@ -56,20 +56,20 @@ static int a_read(const char *name, uint8_t *data, size_t *data_size, const size
         return 0;
 }
 
-static int ap_read(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size)
+static int ap_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         strcat(read_results, " AP:");
-        strcat(read_results, name);
+        strcat(read_results, cmd->name);
 
         *data_size = 0;
 
         return 0;
 }
 
-static int test_read(const char *name, uint8_t *data, size_t *data_size, const size_t max_data_size)
+static int test_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         strcat(read_results, " +TEST:");
-        strcat(read_results, name);
+        strcat(read_results, cmd->name);
 
         return -1;
 }

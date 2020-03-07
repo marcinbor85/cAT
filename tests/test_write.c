@@ -38,28 +38,28 @@ static char ack_results[256];
 static char const *input_text;
 static size_t input_index;
 
-static int a_run(const char *name)
+static int a_run(const struct cat_command *cmd)
 {
         strcat(run_results, " A_");
-        strcat(run_results, name);
+        strcat(run_results, cmd->name);
         return 0;
 }
 
-static int a_write(const char *name, const uint8_t *data, const size_t data_size)
+static int a_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size)
 {
         strcat(write_results, " A:");
         strncat(write_results, data, data_size);
         return 0;
 }
 
-static int ap_write(const char *name, const uint8_t *data, const size_t data_size)
+static int ap_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size)
 {
         strcat(write_results, " AP:");
         strncat(write_results, data, data_size);
         return 0;
 }
 
-static int test_write(const char *name, const uint8_t *data, const size_t data_size)
+static int test_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size)
 {
         strcat(write_results, " +TEST:");
         strncat(write_results, data, data_size);
