@@ -37,31 +37,31 @@ static char ack_results[256];
 static char const *input_text;
 static size_t input_index;
 
-static int a_run(const char *name)
+static int a_run(const struct cat_command *cmd)
 {
         strcat(run_results, " A:");
-        strcat(run_results, name);
+        strcat(run_results, cmd->name);
         return 0;
 }
 
-static int ap_run(const char *name)
+static int ap_run(const struct cat_command *cmd)
 {
         strcat(run_results, " AP:");
-        strcat(run_results, name);
+        strcat(run_results, cmd->name);
         return 0;
 }
 
-static int test_run(const char *name)
+static int test_run(const struct cat_command *cmd)
 {
         strcat(run_results, " +TEST:");
-        strcat(run_results, name);
+        strcat(run_results, cmd->name);
         return 0;
 }
 
-static int force_run(const char *name)
+static int force_run(const struct cat_command *cmd)
 {
         strcat(run_results, " FORCE:");
-        strcat(run_results, name);
+        strcat(run_results, cmd->name);
         return -1;
 }
 
