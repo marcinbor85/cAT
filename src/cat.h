@@ -117,8 +117,10 @@ struct cat_descriptor {
 	struct cat_command const *cmd; /* pointer to array of commands descriptor */
 	size_t cmd_num; /* number of commands in array */
 
-        uint8_t *buf; /* pointer to working buffer (used to parse command argument and command states) */
+        uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
+        uint8_t *state_buf; /* pointer to temporary buffer for command matching analysing and args validating */
+        size_t state_buf_size; /* state buffer length */
 };
 
 /* structure with main at command parser object */
