@@ -201,6 +201,16 @@ static int is_valid_cmd_name_char(const char ch)
         return (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '+');
 }
 
+static int is_valid_dec_char(const char ch)
+{
+        return (ch >= '0' && ch <= '9');
+}
+
+// static int is_valid_hex_char(const char ch)
+// {
+//         return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F');
+// }
+
 static int parse_command(struct cat_object *self)
 {
         assert(self != NULL);
@@ -407,9 +417,119 @@ static int command_not_found(struct cat_object *self)
         return 1;
 }
 
-static int parse_and_write_args(struct cat_object *self, const uint8_t *data, const size_t data_size)
+static int parse_int_decimal(struct cat_object *self, int32_t *ret)
 {
+        assert(self != NULL);
+
+        char ch;
+        int32_t val = -1;
+        int32_t sign = 0;
+
+        while (1) {
+               
+                ch = self->desc->buf[self->position++];
+                ch = to_upper(ch);
+
+                printf("ch=%c\n",ch);
+
+                printf("pos=%ld len=%ld\n", self->position, self->length);
+                // if (self->position >= self->length)
+                //         return -1;
+
+                if ((val >= 0) && ((ch == 0) || (ch == ','))) {
+                        val *= sign;
+                        *ret = val;
+                        return (ch == ',') ? 1 : 0;
+                }
+
+                if (sign == 0) {
+                        if (ch == '-') {
+                                sign = -1;
+                        } else if (ch == '+') {
+                                sign = 1;
+                        } else if (is_valid_dec_char(ch) != 0) {
+                                sign = 1;
+                                val = ch - '0';
+                        } else {
+                                return -1;
+                        }
+                } else {
+                        if (is_valid_dec_char(ch) != 0) {
+                                if (val >= 0) {
+                                        val *= 10;
+                                } else {
+                                        val = 0;
+                                }
+                                val += ch - '0';
+                        } else {
+                                return -1;
+                        }
+                }
+
+                
+                
+        }
+
+        return -1;
+}
+
+static int parse_args_string(struct cat_object *self)
+{
+        int32_t val;
+        int s;
+
+        switch (self->var->type) {
+        case CAT_VAR_INT_DEC:
+                if ((s = parse_int_decimal(self, &val)) < 0)
+                        return -1;
+                printf("val=%d\n", val);
+                *(int32_t*)(self->var->data) = val;
+                if (self->var->write == NULL)
+                        return s;
+                if (self->var->write(self->var) != 0)
+                        return -1;
+                return s;
+        case CAT_VAR_UINT_DEC:
+                break;
+        case CAT_VAR_NUM_HEX:
+                break;
+        case CAT_VAR_BUF_HEX:
+                break;
+        case CAT_VAR_BUF_STRING:
+                break;
+        }
+        return -1;
+}
+
+static int parse_write_args(struct cat_object *self)
+{
+        int s;
+
+        assert(self != NULL);
         
+        if ((s = parse_args_string(self)) < 0) {
+                ack_error(self);
+                return 1;
+        }
+
+        if ((++self->index < self->cmd->var_num) && (s > 0)) {
+                printf("next=%ld\n", self->index);
+                self->var = &self->cmd->var[self->index];
+                return 1;
+        }
+
+        if (self->cmd->write == NULL) {
+                ack_ok(self);
+                return 1;
+        }
+
+        if (self->cmd->write(self->cmd, self->desc->buf, self->length) != 0) {
+                ack_error(self);
+                return 1;
+        }
+
+        ack_ok(self);
+        return 1;
 }
 
 static int parse_command_args(struct cat_object *self)
@@ -421,19 +541,18 @@ static int parse_command_args(struct cat_object *self)
 
         switch (self->current_char) {
         case '\n':
-                if (self->cmd->var == NULL) {
-                        if (self->cmd->write == NULL) {
-                                ack_error(self);
-                                break;
-                        }
-                        if (self->cmd->write(self->cmd, self->desc->buf, self->length) != 0) {
-                                ack_error(self);
-                                break;
-                        }
-                        ack_ok(self);
+                if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
+                        self->state = CAT_STATE_PARSE_WRITE_ARGS;
+                        self->position = 0;
+                        self->index = 0;
+                        self->var = &self->cmd->var[self->index];
                         break;
                 }
-                if (parse_and_write_args(self, self->desc->buf, self->length) != 0) {
+                if (self->cmd->write == NULL) {
+                        ack_error(self);
+                        break;
+                }
+                if (self->cmd->write(self->cmd, self->desc->buf, self->length) != 0) {
                         ack_error(self);
                         break;
                 }
@@ -447,6 +566,8 @@ static int parse_command_args(struct cat_object *self)
                         break;
                 }
                 self->desc->buf[self->length++] = self->current_char;
+                if (self->length < self->desc->buf_size)
+                        self->desc->buf[self->length] = 0;
                 break;
         }
         return 1;
@@ -475,6 +596,8 @@ int cat_service(struct cat_object *self)
                 return command_not_found(self);
         case CAT_STATE_PARSE_COMMAND_ARGS:
                 return parse_command_args(self);
+        case CAT_STATE_PARSE_WRITE_ARGS:
+                return parse_write_args(self);
         default:
                 break;
         }

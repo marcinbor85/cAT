@@ -33,21 +33,31 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
-/* only forward declaration (looks for definition below) */
+/* only forward declarations (looks for definition below) */
 struct cat_command;
+struct cat_variable;
 
+/* enum type with variable type definitions */
 typedef enum {
         CAT_VAR_INT_DEC = 0,
         CAT_VAR_UINT_DEC,
         CAT_VAR_NUM_HEX,
-        CAT_VAR_BYTES_HEX,
-        CAT_VAR_BYTES_STRING
+        CAT_VAR_BUF_HEX,
+        CAT_VAR_BUF_STRING
 } cat_var_type;
 
-struct cat_var_descriptor {
-        cat_var_type type;
-        void *data;
-        size_t data_size;
+/* write variable function handler */
+typedef int (*cat_var_write_handler)(const struct cat_variable *var);
+/* read variable function handler */
+typedef int (*cat_var_read_handler)(const struct cat_variable *var);
+
+struct cat_variable {
+        cat_var_type type; /* variable type (needed for parsing and validating) */
+        void *data; /* generic pointer to statically allocated memory for variable data read/write operations */
+        size_t data_size; /* variable data size, pointer by data pointer */
+
+        cat_var_write_handler write; /* write variable handler */
+        cat_var_read_handler read; /* read variable handler */
 };
 
 /* write command function handler */
@@ -67,7 +77,8 @@ typedef enum {
         CAT_STATE_SEARCH_COMMAND,
         CAT_STATE_COMMAND_FOUND,
         CAT_STATE_COMMAND_NOT_FOUND,
-        CAT_STATE_PARSE_COMMAND_ARGS
+        CAT_STATE_PARSE_COMMAND_ARGS,
+        CAT_STATE_PARSE_WRITE_ARGS
 } cat_state;
 
 /* enum type with prefix parser fsm state */
@@ -97,8 +108,8 @@ struct cat_command {
 	cat_cmd_read_handler read; /* read command handler */
 	cat_cmd_run_handler run; /* run command handler */
 
-        struct cat_var_descriptor const *var;
-        size_t var_num;
+        struct cat_variable const *var; /* pointer to array of variables assiocated with this command */
+        size_t var_num; /* number of variables in array */
 };
 
 /* structure with at command parser descriptor */
@@ -115,10 +126,12 @@ struct cat_object {
 	struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
 	struct cat_io_interface const *iface; /* pointer to at command parser io interface */
 
-        size_t index; /* index used to iterate over commands */
+        size_t index; /* index used to iterate over commands and variables */
         size_t length; /* length of input command name and command arguments */
+        size_t position; /* position of actually parsed char in arguments string */
 
         struct cat_command const *cmd; /* pointer to current command descriptor */
+        struct cat_variable const *var; /* pointer to current variable descriptor */
         cat_cmd_type cmd_type; /* type of command request */
 
         char current_char; /* current received char from input stream */
