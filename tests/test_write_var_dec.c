@@ -197,7 +197,7 @@ static void prepare_input(const char *text)
         memset(write_results, 0, sizeof(write_results));
 }
 
-static const char test_case_1[] = "\nAT+SET=-128,-21,333\n";
+static const char test_case_1[] = "\nAT+SET=-128,-21,333,250,0,1\n";
 
 int main(int argc, char **argv)
 {
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
         while (cat_service(&at) != 0) {};
         
         assert(strcmp(ack_results, "\nOK\n") == 0);
-        assert(strcmp(write_results, " CMD:-128,-21,333") == 0);
+        assert(strcmp(write_results, " CMD:-128,-21,333,250,0,1") == 0);
 
         assert(var1 == -128);
         assert(var1b == var1);
@@ -217,6 +217,12 @@ int main(int argc, char **argv)
         assert(var2b == var2);
         assert(var3 == 333);
         assert(var3b == var3);
+        assert(var4 == 250);
+        assert(var4b == var4);
+        assert(var5 == 0);
+        assert(var5b == var5);
+        assert(var6 == 1);
+        assert(var6b == var6);
 
 	return 0;
 }

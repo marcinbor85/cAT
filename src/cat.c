@@ -431,13 +431,14 @@ static int parse_int_decimal(struct cat_object *self, int32_t *ret)
         assert(ret != NULL);
 
         char ch;
-        int32_t val = -1;
+        int32_t val = 0;
         int32_t sign = 0;
+        int ok = 0;
 
         while (1) {
                 ch = self->desc->buf[self->position++];
 
-                if ((val >= 0) && ((ch == 0) || (ch == ','))) {
+                if ((ok != 0) && ((ch == 0) || (ch == ','))) {
                         val *= sign;
                         *ret = val;
                         return (ch == ',') ? 1 : 0;
@@ -451,16 +452,14 @@ static int parse_int_decimal(struct cat_object *self, int32_t *ret)
                         } else if (is_valid_dec_char(ch) != 0) {
                                 sign = 1;
                                 val = ch - '0';
+                                ok = 1;
                         } else {
                                 return -1;
                         }
                 } else {
                         if (is_valid_dec_char(ch) != 0) {
-                                if (val >= 0) {
-                                        val *= 10;
-                                } else {
-                                        val = 0;
-                                }
+                                ok = 1;
+                                val *= 10;
                                 val += ch - '0';
                         } else {
                                 return -1;
@@ -500,87 +499,80 @@ static int parse_uint_decimal(struct cat_object *self, uint32_t *ret)
         return -1;
 }
 
+static int validate_int_range(void *dest, int32_t val, int size)
+{
+        switch (size) {
+        case 1:
+                if ((val < INT8_MIN) || (val > INT8_MAX))
+                        return -1;
+                *(int8_t*)dest = val;
+                break;
+        case 2:
+                if ((val < INT16_MIN) || (val > INT16_MAX))
+                        return -1;
+                *(int16_t*)dest = val;
+                break;
+        case 4:
+                if ((val < INT32_MIN) || (val > INT32_MAX))
+                        return -1;
+                *(int32_t*)dest = val;
+                break;
+        default:
+                return -1;
+        }
+        return 0;
+}
+
+static int validate_uint_range(void *dest, uint32_t val, int size)
+{
+        switch (size) {
+        case 1:
+                if (val > UINT8_MAX)
+                        return -1;
+                *(uint8_t*)dest = val;
+                break;
+        case 2:
+                if (val > UINT16_MAX)
+                        return -1;
+                *(int16_t*)dest = val;
+                break;
+        case 4:
+                if (val > UINT32_MAX)
+                        return -1;
+                *(uint32_t*)dest = val;
+                break;
+        default:
+                return -1;
+        }
+        return 0;
+}
+
 static int parse_write_args(struct cat_object *self)
 {
-        int32_t sval;
-        uint32_t usval;
+        int32_t val;
         int stat;
 
         assert(self != NULL);
 
         switch (self->var->type) {
         case CAT_VAR_INT_DEC:
-                stat = parse_int_decimal(self, &sval);
+                stat = parse_int_decimal(self, &val);
                 if (stat < 0) {
                         ack_error(self);
                         return -1;
                 }
-                switch (self->var->data_size) {
-                case 1:
-                        if ((sval < INT8_MIN) || (sval > INT8_MAX)) {
-                                ack_error(self);
-                                return -1;
-                        }
-                        *(int8_t*)(self->var->data) = sval;
-                        break;
-                case 2:
-                        if ((sval < INT16_MIN) || (sval > INT16_MAX)) {
-                                ack_error(self);
-                                return -1;
-                        }
-                        *(int16_t*)(self->var->data) = sval;
-                        break;
-                case 4:
-                        if ((sval < INT32_MIN) || (sval > INT32_MAX)) {
-                                ack_error(self);
-                                return -1;
-                        }
-                        *(int32_t*)(self->var->data) = sval;
-                        break;
-                default:
-                        ack_error(self);
-                        return -1;
-                }
-
-                if ((self->var->write != NULL) && (self->var->write(self->var) != 0)) {
+                if (validate_int_range(self->var->data, val, self->var->data_size) != 0) {
                         ack_error(self);
                         return -1;
                 }
                 break;
         case CAT_VAR_UINT_DEC:
-                stat = parse_uint_decimal(self, &usval);
+                stat = parse_uint_decimal(self, (uint32_t*)&val);
                 if (stat < 0) {
                         ack_error(self);
                         return -1;
                 }
-                switch (self->var->data_size) {
-                case 1:
-                        if (usval > UINT8_MAX) {
-                                ack_error(self);
-                                return -1;
-                        }
-                        *(uint8_t*)(self->var->data) = usval;
-                        break;
-                case 2:
-                        if (usval > UINT16_MAX) {
-                                ack_error(self);
-                                return -1;
-                        }
-                        *(uint16_t*)(self->var->data) = usval;
-                        break;
-                case 4:
-                        if (usval > UINT32_MAX) {
-                                ack_error(self);
-                                return -1;
-                        }
-                        *(uint32_t*)(self->var->data) = usval;
-                        break;
-                default:
-                        ack_error(self);
-                        return -1;
-                }
-
-                if ((self->var->write != NULL) && (self->var->write(self->var) != 0)) {
+                if (validate_uint_range(self->var->data, val, self->var->data_size) != 0) {
                         ack_error(self);
                         return -1;
                 }
@@ -593,9 +585,19 @@ static int parse_write_args(struct cat_object *self)
                 break;
         }
 
+        if ((self->var->write != NULL) && (self->var->write(self->var) != 0)) {
+                ack_error(self);
+                return -1;
+        }
+
         if ((++self->index < self->cmd->var_num) && (stat > 0)) {
                 self->var = &self->cmd->var[self->index];
                 return 1;
+        }
+
+        if (stat > 0) {
+                ack_error(self);
+                return -1;
         }
 
         if (self->cmd->write == NULL) {
