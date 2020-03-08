@@ -37,9 +37,9 @@ add_executable( test_write tests/test_write.c )
 target_link_libraries( test_write cat )
 add_test( test_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write )
 
-add_executable( test_write_var tests/test_write_var.c )
-target_link_libraries( test_write_var cat )
-add_test( test_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_var )
+add_executable( test_write_var_dec tests/test_write_var_dec.c )
+target_link_libraries( test_write_var_dec cat )
+add_test( test_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_var_dec )
 
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )

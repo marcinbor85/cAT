@@ -428,21 +428,14 @@ static int command_not_found(struct cat_object *self)
 static int parse_int_decimal(struct cat_object *self, int32_t *ret)
 {
         assert(self != NULL);
+        assert(ret != NULL);
 
         char ch;
         int32_t val = -1;
         int32_t sign = 0;
 
         while (1) {
-               
                 ch = self->desc->buf[self->position++];
-                ch = to_upper(ch);
-
-                printf("ch=%c\n",ch);
-
-                printf("pos=%ld len=%ld\n", self->position, self->length);
-                // if (self->position >= self->length)
-                //         return -1;
 
                 if ((val >= 0) && ((ch == 0) || (ch == ','))) {
                         val *= sign;
@@ -473,31 +466,124 @@ static int parse_int_decimal(struct cat_object *self, int32_t *ret)
                                 return -1;
                         }
                 }
-
-                
-                
         }
 
         return -1;
 }
 
-static int parse_args_string(struct cat_object *self)
+static int parse_uint_decimal(struct cat_object *self, uint32_t *ret)
 {
-        int32_t val;
-        int s;
+        assert(self != NULL);
+        assert(ret != NULL);
+
+        char ch;
+        uint32_t val = 0;
+        int ok = 0;
+
+        while (1) {
+                ch = self->desc->buf[self->position++];
+
+                if ((ok != 0) && ((ch == 0) || (ch == ','))) {
+                        *ret = val;
+                        return (ch == ',') ? 1 : 0;
+                }
+
+                if (is_valid_dec_char(ch) != 0) {
+                        ok = 1;
+                        val *= 10;
+                        val += ch - '0';
+                } else {
+                        return -1;
+                }
+        }
+
+        return -1;
+}
+
+static int parse_write_args(struct cat_object *self)
+{
+        int32_t sval;
+        uint32_t usval;
+        int stat;
+
+        assert(self != NULL);
 
         switch (self->var->type) {
         case CAT_VAR_INT_DEC:
-                if ((s = parse_int_decimal(self, &val)) < 0)
+                stat = parse_int_decimal(self, &sval);
+                if (stat < 0) {
+                        ack_error(self);
                         return -1;
-                printf("val=%d\n", val);
-                *(int32_t*)(self->var->data) = val;
-                if (self->var->write == NULL)
-                        return s;
-                if (self->var->write(self->var) != 0)
+                }
+                switch (self->var->data_size) {
+                case 1:
+                        if ((sval < INT8_MIN) || (sval > INT8_MAX)) {
+                                ack_error(self);
+                                return -1;
+                        }
+                        *(int8_t*)(self->var->data) = sval;
+                        break;
+                case 2:
+                        if ((sval < INT16_MIN) || (sval > INT16_MAX)) {
+                                ack_error(self);
+                                return -1;
+                        }
+                        *(int16_t*)(self->var->data) = sval;
+                        break;
+                case 4:
+                        if ((sval < INT32_MIN) || (sval > INT32_MAX)) {
+                                ack_error(self);
+                                return -1;
+                        }
+                        *(int32_t*)(self->var->data) = sval;
+                        break;
+                default:
+                        ack_error(self);
                         return -1;
-                return s;
+                }
+
+                if ((self->var->write != NULL) && (self->var->write(self->var) != 0)) {
+                        ack_error(self);
+                        return -1;
+                }
+                break;
         case CAT_VAR_UINT_DEC:
+                stat = parse_uint_decimal(self, &usval);
+                if (stat < 0) {
+                        ack_error(self);
+                        return -1;
+                }
+                switch (self->var->data_size) {
+                case 1:
+                        if (usval > UINT8_MAX) {
+                                ack_error(self);
+                                return -1;
+                        }
+                        *(uint8_t*)(self->var->data) = usval;
+                        break;
+                case 2:
+                        if (usval > UINT16_MAX) {
+                                ack_error(self);
+                                return -1;
+                        }
+                        *(uint16_t*)(self->var->data) = usval;
+                        break;
+                case 4:
+                        if (usval > UINT32_MAX) {
+                                ack_error(self);
+                                return -1;
+                        }
+                        *(uint32_t*)(self->var->data) = usval;
+                        break;
+                default:
+                        ack_error(self);
+                        return -1;
+                }
+
+                if ((self->var->write != NULL) && (self->var->write(self->var) != 0)) {
+                        ack_error(self);
+                        return -1;
+                }
                 break;
         case CAT_VAR_NUM_HEX:
                 break;
@@ -506,22 +592,8 @@ static int parse_args_string(struct cat_object *self)
         case CAT_VAR_BUF_STRING:
                 break;
         }
-        return -1;
-}
 
-static int parse_write_args(struct cat_object *self)
-{
-        int s;
-
-        assert(self != NULL);
-        
-        if ((s = parse_args_string(self)) < 0) {
-                ack_error(self);
-                return 1;
-        }
-
-        if ((++self->index < self->cmd->var_num) && (s > 0)) {
-                printf("next=%ld\n", self->index);
+        if ((++self->index < self->cmd->var_num) && (stat > 0)) {
                 self->var = &self->cmd->var[self->index];
                 return 1;
         }
