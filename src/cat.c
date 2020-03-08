@@ -139,7 +139,15 @@ static void prepare_parse_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        memset(self->desc->buf, 0x55, self->desc->buf_size);
+        memset(
+                self->desc->state_buf,
+                (CAT_CMD_STATE_PARTIAL_MATCH << 0) |
+                (CAT_CMD_STATE_PARTIAL_MATCH << 2) |
+                (CAT_CMD_STATE_PARTIAL_MATCH << 4) |
+                (CAT_CMD_STATE_PARTIAL_MATCH << 6),
+                self->desc->state_buf_size
+        );
+
         self->index = 0;
         self->length = 0;
         self->cmd_type = CAT_CMD_TYPE_EXECUTE;
@@ -252,7 +260,7 @@ static uint8_t get_cmd_state(struct cat_object *self, size_t i)
 {
         uint8_t s;
 
-        s = self->desc->buf[i >> 2];
+        s = self->desc->state_buf[i >> 2];
         s >>= (i % 4) << 1;
         s &= 0x03;
 
@@ -268,10 +276,10 @@ static void set_cmd_state(struct cat_object *self, size_t i, uint8_t state)
         n = i >> 2;
         k = ((i % 4) << 1);
 
-        s = self->desc->buf[n];
+        s = self->desc->state_buf[n];
         s &= ~(0x03 << k);
         s |= (state & 0x03) << k;
-        self->desc->buf[n] = s;
+        self->desc->state_buf[n] = s;
 }
 
 static int update_command(struct cat_object *self)
