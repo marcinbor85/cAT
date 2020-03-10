@@ -38,10 +38,6 @@ static int8_t var1, var1b;
 static int16_t var2, var2b;
 static int32_t var3, var3b;
 
-static uint8_t var4, var4b;
-static uint16_t var5, var5b;
-static uint32_t var6, var6b;
-
 static char const *input_text;
 static size_t input_index;
 
@@ -49,9 +45,6 @@ static int cmd_write(const struct cat_command *cmd, const uint8_t *data, const s
 {
         strcat(write_results, " CMD:");
         strncat(write_results, data, data_size);
-
-        assert(args_num == 6);
-
         return 0;
 }
 
@@ -73,24 +66,6 @@ static int var3_write(const struct cat_variable *var)
         return 0;
 }
 
-static int var4_write(const struct cat_variable *var)
-{
-        var4b = *(uint8_t*)(var->data);
-        return 0;
-}
-
-static int var5_write(const struct cat_variable *var)
-{
-        var5b = *(uint16_t*)(var->data);
-        return 0;
-}
-
-static int var6_write(const struct cat_variable *var)
-{
-        var6b = *(uint32_t*)(var->data);
-        return 0;
-}
-
 static struct cat_variable vars[] = {
         {
                 .type = CAT_VAR_INT_DEC,
@@ -109,24 +84,6 @@ static struct cat_variable vars[] = {
                 .data = &var3,
                 .data_size = sizeof(var3),
                 .write = var3_write
-        },
-        {
-                .type = CAT_VAR_UINT_DEC,
-                .data = &var4,
-                .data_size = sizeof(var4),
-                .write = var4_write
-        },
-        {
-                .type = CAT_VAR_UINT_DEC,
-                .data = &var5,
-                .data_size = sizeof(var5),
-                .write = var5_write
-        },
-        {
-                .type = CAT_VAR_UINT_DEC,
-                .data = &var6,
-                .data_size = sizeof(var6),
-                .write = var6_write
         }
 };
 
@@ -189,18 +146,13 @@ static void prepare_input(const char *text)
         var2b = -2;
         var3b = -3;
 
-        var4 = 1;
-        var5 = 2;
-        var6 = 3;
-        var4b = 11;
-        var5b = 12;
-        var6b = 13;
-
         memset(ack_results, 0, sizeof(ack_results));
         memset(write_results, 0, sizeof(write_results));
 }
 
-static const char test_case_1[] = "\nAT+SET=-128,-21,333,250,0,1\n";
+static const char test_case_1[] = "\nAT+SET=-128\nAT+SET=-129\nAT+SET=127\nAT+SET=128\n";
+static const char test_case_2[] = "\nAT+SET=-128,-32768\nAT+SET=-128,-40000\nAT+SET=-128,32767\nAT+SET=-100,40000\n";
+static const char test_case_3[] = "\nAT+SET=0,0,-2147483648\nAT+SET=0,0,-2147483649\nAT+SET=1,1,2147483647\nAT+SET=2,2,2147483648\n";
 
 int main(int argc, char **argv)
 {
@@ -211,21 +163,41 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
         
-        assert(strcmp(ack_results, "\nOK\n") == 0);
-        assert(strcmp(write_results, " CMD:-128,-21,333,250,0,1") == 0);
+        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nOK\n\nERROR\n") == 0);
+        assert(strcmp(write_results, " CMD:-128 CMD:127") == 0);
 
-        assert(var1 == -128);
+        assert(var1 == 127);
         assert(var1b == var1);
-        assert(var2 == -21);
+        assert(var2 == 2);
+        assert(var2b == -2);
+        assert(var3 == 3);
+        assert(var3b == -3);
+
+        prepare_input(test_case_2);
+        while (cat_service(&at) != 0) {};
+        
+        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nOK\n\nERROR\n") == 0);
+        assert(strcmp(write_results, " CMD:-128,-32768 CMD:-128,32767") == 0);
+
+        assert(var1 == -100);
+        assert(var1b == var1);
+        assert(var2 == 32767);
         assert(var2b == var2);
-        assert(var3 == 333);
+        assert(var3 == 3);
+        assert(var3b == -3);
+
+        prepare_input(test_case_3);
+        while (cat_service(&at) != 0) {};
+        
+        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nOK\n\nERROR\n") == 0);
+        assert(strcmp(write_results, " CMD:0,0,-2147483648 CMD:1,1,2147483647") == 0);
+
+        assert(var1 == 2);
+        assert(var1b == var1);
+        assert(var2 == 2);
+        assert(var2b == var2);
+        assert(var3 == 2147483647);
         assert(var3b == var3);
-        assert(var4 == 250);
-        assert(var4b == var4);
-        assert(var5 == 0);
-        assert(var5b == var5);
-        assert(var6 == 1);
-        assert(var6b == var6);
 
 	return 0;
 }
