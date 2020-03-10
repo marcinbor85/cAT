@@ -107,7 +107,10 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         assert(desc->cmd_num > 0);
 
         assert(desc->buf != NULL);
-        assert(desc->buf_size * 4U >= desc->cmd_num);
+        assert(desc->buf_size > 0);
+
+        assert(desc->state_buf != NULL);
+        assert(desc->state_buf_size * 4U >= desc->cmd_num);
         
         self->desc = desc;
         self->iface = iface;
