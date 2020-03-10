@@ -1,3 +1,9 @@
+TODO:
+- read var handler (before command read handler, to allow change buffer)
+- string arg parser
+- hexbuf arg parser
+- hex arg parser
+
 0.4.0
 * high level parsing for command arguments
 * int, uint, hex, hexbuf, string argument types
