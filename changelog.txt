@@ -2,6 +2,8 @@ TODO:
 - read var handler (before command read handler, to allow change buffer)
 - string arg parser
 - hexbuf arg parser
+- readme update
+- example app update
 
 0.4.0
 * high level parsing for command arguments
