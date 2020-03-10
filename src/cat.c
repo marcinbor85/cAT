@@ -413,6 +413,7 @@ static int command_found(struct cat_object *self)
                 break;
         case CAT_CMD_TYPE_WRITE:
                 self->length = 0;
+                self->desc->buf[0] = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_ARGS;
                 break;
         }
@@ -651,8 +652,11 @@ static int parse_command_args(struct cat_object *self)
                         break;
                 }
                 self->desc->buf[self->length++] = self->current_char;
-                if (self->length < self->desc->buf_size)
+                if (self->length < self->desc->buf_size) {
                         self->desc->buf[self->length] = 0;
+                } else {
+                        self->state = CAT_STATE_ERROR;
+                }
                 break;
         }
         return 1;
