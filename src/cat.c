@@ -429,14 +429,14 @@ static int command_not_found(struct cat_object *self)
         return 1;
 }
 
-static int parse_int_decimal(struct cat_object *self, int32_t *ret)
+static int parse_int_decimal(struct cat_object *self, int64_t *ret)
 {
         assert(self != NULL);
         assert(ret != NULL);
 
         char ch;
-        int32_t val = 0;
-        int32_t sign = 0;
+        int64_t val = 0;
+        int64_t sign = 0;
         int ok = 0;
 
         while (1) {
@@ -474,13 +474,13 @@ static int parse_int_decimal(struct cat_object *self, int32_t *ret)
         return -1;
 }
 
-static int parse_uint_decimal(struct cat_object *self, uint32_t *ret)
+static int parse_uint_decimal(struct cat_object *self, uint64_t *ret)
 {
         assert(self != NULL);
         assert(ret != NULL);
 
         char ch;
-        uint32_t val = 0;
+        uint64_t val = 0;
         int ok = 0;
 
         while (1) {
@@ -503,7 +503,7 @@ static int parse_uint_decimal(struct cat_object *self, uint32_t *ret)
         return -1;
 }
 
-static int validate_int_range(void *dest, int32_t val, int size)
+static int validate_int_range(void *dest, int64_t val, int size)
 {
         switch (size) {
         case 1:
@@ -527,7 +527,7 @@ static int validate_int_range(void *dest, int32_t val, int size)
         return 0;
 }
 
-static int validate_uint_range(void *dest, uint32_t val, int size)
+static int validate_uint_range(void *dest, uint64_t val, int size)
 {
         switch (size) {
         case 1:
@@ -553,7 +553,7 @@ static int validate_uint_range(void *dest, uint32_t val, int size)
 
 static int parse_write_args(struct cat_object *self)
 {
-        int32_t val;
+        int64_t val;
         int stat;
 
         assert(self != NULL);
@@ -571,7 +571,7 @@ static int parse_write_args(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_UINT_DEC:
-                stat = parse_uint_decimal(self, (uint32_t*)&val);
+                stat = parse_uint_decimal(self, (uint64_t*)&val);
                 if (stat < 0) {
                         ack_error(self);
                         return -1;
