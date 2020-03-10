@@ -538,7 +538,7 @@ static int validate_uint_range(void *dest, uint32_t val, int size)
         case 2:
                 if (val > UINT16_MAX)
                         return -1;
-                *(int16_t*)dest = val;
+                *(uint16_t*)dest = val;
                 break;
         case 4:
                 if (val > UINT32_MAX)
