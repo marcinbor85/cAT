@@ -91,7 +91,10 @@ static int read_cmd_char(struct cat_object *self)
 
         if (self->iface->read(&self->current_char) == 0)
                 return 0;
-        self->current_char = to_upper(self->current_char);
+        
+        if (self->state != CAT_STATE_PARSE_COMMAND_ARGS)
+                self->current_char = to_upper(self->current_char);
+
         return 1;
 }
 
@@ -217,10 +220,10 @@ static int is_valid_dec_char(const char ch)
         return (ch >= '0' && ch <= '9');
 }
 
-// static int is_valid_hex_char(const char ch)
-// {
-//         return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F');
-// }
+static int is_valid_hex_char(const char ch)
+{
+        return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F');
+}
 
 static int parse_command(struct cat_object *self)
 {
@@ -503,6 +506,46 @@ static int parse_uint_decimal(struct cat_object *self, uint64_t *ret)
         return -1;
 }
 
+static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
+{
+        assert(self != NULL);
+        assert(ret != NULL);
+
+        char ch;
+        uint64_t val = 0;
+        int state = 0;
+
+        while (1) {
+                ch = self->desc->buf[self->position++];
+                ch = to_upper(ch);
+
+                if ((state >= 3) && ((ch == 0) || (ch == ','))) {
+                        *ret = val;
+                        return (ch == ',') ? 1 : 0;
+                }
+
+                if (state == 0) {
+                        if (ch != '0')
+                                return -1;
+                        state = 1;
+                } else if (state == 1) {
+                        if (ch != 'X')
+                                return -1;
+                        state = 2;
+                } else if (state >= 2) {
+                        if (is_valid_hex_char(ch) != 0) {
+                                state = 3;
+                                val <<= 4;
+                                val += ((ch >= '0') && (ch <= '9')) ? (uint8_t)(ch - '0') : (uint8_t)(ch - 'A' + 10U);
+                        } else {
+                                return -1;
+                        }
+                }
+        }
+
+        return -1;
+}
+
 static int validate_int_range(void *dest, int64_t val, int size)
 {
         switch (size) {
@@ -582,6 +625,15 @@ static int parse_write_args(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_NUM_HEX:
+                stat = parse_num_hexadecimal(self, (uint64_t*)&val);
+                if (stat < 0) {
+                        ack_error(self);
+                        return -1;
+                }
+                if (validate_uint_range(self->var->data, val, self->var->data_size) != 0) {
+                        ack_error(self);
+                        return -1;
+                }
                 break;
         case CAT_VAR_BUF_HEX:
                 break;
