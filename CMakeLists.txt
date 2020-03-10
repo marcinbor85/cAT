@@ -41,6 +41,10 @@ add_executable( test_write_int_range tests/test_write_int_range.c )
 target_link_libraries( test_write_int_range cat )
 add_test( test_write_int_range ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_int_range )
 
+add_executable( test_write_uint_range tests/test_write_uint_range.c )
+target_link_libraries( test_write_uint_range cat )
+add_test( test_write_uint_range ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_uint_range )
+
 add_executable( test_write_parse tests/test_write_parse.c )
 target_link_libraries( test_write_parse cat )
 add_test( test_write_parse ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_parse )
