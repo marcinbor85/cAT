@@ -18,8 +18,8 @@ target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 install( TARGETS cat DESTINATION lib )
 install( FILES src/cat.h DESTINATION include/cat )
 
-# add_executable( example example/main.c )
-# target_link_libraries( example cat )
+add_executable( example example/example.c )
+target_link_libraries( example cat )
 
 add_executable( test_parse tests/test_parse.c )
 target_link_libraries( test_parse cat )
@@ -39,7 +39,11 @@ add_test( test_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write )
 
 add_executable( test_write_var_dec tests/test_write_var_dec.c )
 target_link_libraries( test_write_var_dec cat )
-add_test( test_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_var_dec )
+add_test( test_write_var_dec ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_var_dec )
+
+add_executable( test_write_parse tests/test_write_parse.c )
+target_link_libraries( test_write_parse cat )
+add_test( test_write_parse ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_parse )
 
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
