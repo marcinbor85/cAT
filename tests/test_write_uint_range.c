@@ -50,19 +50,19 @@ static int cmd_write(const struct cat_command *cmd, const uint8_t *data, const s
 
 static int var1_write(const struct cat_variable *var)
 {
-        var1b = *(int8_t*)(var->data);
+        var1b = *(uint8_t*)(var->data);
         return 0;
 }
 
 static int var2_write(const struct cat_variable *var)
 {
-        var2b = *(int16_t*)(var->data);
+        var2b = *(uint16_t*)(var->data);
         return 0;
 }
 
 static int var3_write(const struct cat_variable *var)
 {
-        var3b = *(int32_t*)(var->data);
+        var3b = *(uint32_t*)(var->data);
         return 0;
 }
 
