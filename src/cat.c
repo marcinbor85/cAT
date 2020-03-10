@@ -609,7 +609,7 @@ static int parse_write_args(struct cat_object *self)
                 return 1;
         }
 
-        if (self->cmd->write(self->cmd, self->desc->buf, self->length) != 0) {
+        if (self->cmd->write(self->cmd, self->desc->buf, self->length, self->index) != 0) {
                 ack_error(self);
                 return 1;
         }
@@ -638,7 +638,7 @@ static int parse_command_args(struct cat_object *self)
                         ack_error(self);
                         break;
                 }
-                if (self->cmd->write(self->cmd, self->desc->buf, self->length) != 0) {
+                if (self->cmd->write(self->cmd, self->desc->buf, self->length, 0) != 0) {
                         ack_error(self);
                         break;
                 }
