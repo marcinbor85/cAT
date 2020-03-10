@@ -604,6 +604,11 @@ static int parse_write_args(struct cat_object *self)
                 return -1;
         }
 
+        if ((self->cmd->need_all_vars != false) && (self->index != self->cmd->var_num)) {
+                ack_error(self);
+                return -1;
+        }
+
         if (self->cmd->write == NULL) {
                 ack_ok(self);
                 return 1;
