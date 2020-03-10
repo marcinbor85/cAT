@@ -352,7 +352,7 @@ static int search_command(struct cat_object *self)
         if (cmd_state != CAT_CMD_STATE_NOT_MATCH) {
                 if (cmd_state == CAT_CMD_STATE_PARTIAL_MATCH) {
                         if (self->cmd != NULL) {
-                                self->state = CAT_STATE_COMMAND_NOT_FOUND;
+                                self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                                 return 1;
                         }
                         self->cmd = &self->desc->cmd[self->index];
@@ -365,7 +365,7 @@ static int search_command(struct cat_object *self)
 
         if (++self->index >= self->desc->cmd_num) {
                 if (self->cmd == NULL) {
-                        self->state = CAT_STATE_COMMAND_NOT_FOUND;
+                        self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                 } else {
                         self->state = CAT_STATE_COMMAND_FOUND;
                 }
