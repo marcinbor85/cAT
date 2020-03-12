@@ -1,17 +1,7 @@
-TODO:
-- read var handler (before command read handler, to allow change buffer)
-- readme update
-
 0.4.0
 * high level parsing for command arguments
 * int, uint, hex, hexbuf, string argument types
 * validating arguments values range
-* configurable optional/required arguments parsing
-* some bugs fixing in command parsing algorithm
-* working buffer always ends with '/0' char
-* allow special characters in commands names
-* more units tests added
-* example application added
 
 0.3.0
 * independent buffers (parsing buffer and state buffer)
