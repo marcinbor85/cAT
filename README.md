@@ -7,6 +7,7 @@ Plain C library for parsing AT commands.
 * very small footprint (both RAM and ROM)
 * support for read, write and run type commands
 * commands shortcuts (auto select best command candidate)
+* high-level memory variables mapping arguments parsing
 * CRLF and LF compatible
 * case-insensitive
 * dedicated for embedded systems
@@ -15,7 +16,7 @@ Plain C library for parsing AT commands.
 * multiplatform and portable
 * asynchronous api (only 2 functions) with event callbacks
 * only two source files
-* unit tests
+* wide unit tests
 
 ## Build
 
@@ -29,6 +30,36 @@ sudo make install
 ```
 
 ## Usage
+
+Define High-Level variables:
+
+```c
+
+static uint8_t x;
+static uint8_t y;
+static char msg[32];
+
+static struct cat_variable go_vars[] = {
+        {
+                .type = CAT_VAR_UINT_DEC, /* unsigned int variable */
+                .data = &x,
+                .data_size = sizeof(x),
+                .write = x_write
+        },
+        {
+                .type = CAT_VAR_UINT_DEC, /* unsigned int variable */
+                .data = &y,
+                .data_size = sizeof(y),
+                .write = y_write
+        },
+        {
+                .type = CAT_VAR_BUF_STRING, /* string variable */
+                .data = msg,
+                .data_size = sizeof(msg),
+                .write = msg_write
+        }
+};
+```
 
 Define AT commands descriptor:
 
@@ -44,6 +75,13 @@ static struct cat_command cmds[] = {
                 .name = "+NUM",
                 .write = num_write, /* write handler for AT+NUM={val} command */
                 .read = num_read /* read handler for AT+NUM? command */
+        },
+        {
+                .name = "+GO",
+                .write = go_write, /* write handler for AT+GO={x},{y},{msg} command */
+                .var = go_vars, /* attach variables to command */
+                .var_num = sizeof(go_vars) / sizeof(go_vars[0]),
+                .need_all_vars = true
         },
         {
                 .name = "RESTART",
