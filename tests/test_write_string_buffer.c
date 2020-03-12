@@ -124,7 +124,7 @@ static void prepare_input(const char *text)
 }
 
 static const char test_case_1[] = "\nAT+SET=0\nAT+SET=\"\\\"abcd\\\"\"\nAT+SET=\"\"a\nAT+SET=\"1122334\"\nAT+SET=\"t\"\n";
-static const char test_case_2[] = "\nAT+SET=\"12345678\"\nAT+SET=\"\"\nAT+SET=\"\\\\\\\\\"\n";
+static const char test_case_2[] = "\nAT+SET=\"12345678\"\nAT+SET=\"\"\nAT+SET=\"\\\\\\\\\"\nAT+SET=\"r1\\nr2\\n\"\n";
 
 int main(int argc, char **argv)
 {
@@ -148,14 +148,14 @@ int main(int argc, char **argv)
         prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
         
-        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n") == 0);
-        assert(strcmp(write_results, " CMD:\"\" CMD:\"\\\\\\\\\"") == 0);
+        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nOK\n") == 0);
+        assert(strcmp(write_results, " CMD:\"\" CMD:\"\\\\\\\\\" CMD:\"r1\\nr2\\n\"") == 0);
 
-        assert(strcmp(var, "\\\\") == 0);
+        assert(strcmp(var, "r1\nr2\n") == 0);
 
         assert(var_write_size[0] == 0);
         assert(var_write_size[1] == 2);
-        assert(var_write_size[2] == 0);
+        assert(var_write_size[2] == 6);
         assert(var_write_size[3] == 0);
 
 	return 0;

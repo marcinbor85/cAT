@@ -628,14 +628,23 @@ static int parse_buffer_string(struct cat_object *self)
                         ((uint8_t*)(self->var->data))[size++] = ch;
                         break;
                 case 2:
-                        if ((ch == '\\') || (ch == '"')) {
-                                if (size >= self->var->data_size)
-                                        return -1;                                
-                                ((uint8_t*)(self->var->data))[size++] = ch;
-                                state = 1;
-                        } else {
+                        switch (ch) {
+                        case '\\':
+                                ch = '\\';
+                                break;
+                        case '"':
+                                ch = '"';
+                                break;
+                        case 'n':
+                                ch = '\n';
+                                break;
+                        default:
                                 return -1;
                         }
+                        if (size >= self->var->data_size)
+                                return -1;                                
+                        ((uint8_t*)(self->var->data))[size++] = ch;
+                        state = 1;
                         break;
                 case 3:
                         if ((ch == 0) || (ch == ',')) {
