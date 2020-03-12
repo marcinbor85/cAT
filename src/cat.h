@@ -121,8 +121,6 @@ struct cat_descriptor {
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
-        uint8_t *state_buf; /* pointer to temporary buffer for command matching analysing */
-        size_t state_buf_size; /* state buffer length */
 };
 
 /* structure with main at command parser object */
