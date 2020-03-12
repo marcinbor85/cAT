@@ -32,6 +32,7 @@ SOFTWARE.
 #include "../src/cat.h"
 
 static int32_t speed;
+static uint16_t adr;
 static uint8_t x;
 static uint8_t y;
 static uint8_t bytes_buf[4];
@@ -59,6 +60,12 @@ static int msg_write(const struct cat_variable *var, size_t write_size)
 static int speed_write(const struct cat_variable *var, size_t write_size)
 {
         printf("speed variable updated internally to: %d\n", speed);
+        return 0;
+}
+
+static int adr_write(const struct cat_variable *var, size_t write_size)
+{
+        printf("adr variable updated internally to: 0x%04X\n", adr);
         return 0;
 }
 
@@ -99,6 +106,11 @@ static int set_write(const struct cat_command *cmd, const uint8_t *data, const s
                 cmd->name,
                 speed
         );
+        return 0;
+}
+
+static int set_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
+{
         return 0;
 }
 
@@ -145,6 +157,12 @@ static struct cat_variable set_vars[] = {
                 .write = speed_write
         },
         {
+                .type = CAT_VAR_NUM_HEX,
+                .data = &adr,
+                .data_size = sizeof(adr),
+                .write = adr_write
+        },
+        {
                 .type = CAT_VAR_BUF_HEX,
                 .data = &bytes_buf,
                 .data_size = sizeof(bytes_buf),
@@ -163,6 +181,7 @@ static struct cat_command cmds[] = {
         {
                 .name = "+SET",
                 .write = set_write,
+                .read = set_read,
                 .var = set_vars,
                 .var_num = sizeof(set_vars) / sizeof(set_vars[0]),
         },

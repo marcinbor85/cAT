@@ -804,10 +804,178 @@ static int parse_write_args(struct cat_object *self)
         return 1;
 }
 
+static int print_format_num(struct cat_object *self, char *fmt, uint32_t val)
+{
+        int written;
+        size_t len;
+        
+        len = self->desc->buf_size - self->position;
+        written = snprintf((char*)&self->desc->buf[self->position], len, fmt, val);
+        
+        if ((written < 0) || ((size_t)written >= len))
+                return -1;
+
+        self->position += written;
+        return 0;
+}
+
+static int format_int_decimal(struct cat_object *self)
+{
+        int32_t val;
+
+        assert(self != NULL);
+
+        switch (self->var->data_size) {
+        case 1:
+                val = *(int8_t*)self->var->data;
+                break;
+        case 2:
+                val = *(int16_t*)self->var->data;
+                break;
+        case 4:
+                val = *(int32_t*)self->var->data;
+                break;
+        default:
+                return -1;
+        }
+
+        if (print_format_num(self, "%d", val) != 0)
+                return -1;
+
+        return 0;
+}
+
+static int format_uint_decimal(struct cat_object *self)
+{
+        uint32_t val;
+
+        assert(self != NULL);
+
+        switch (self->var->data_size) {
+        case 1:
+                val = *(uint8_t*)self->var->data;
+                break;
+        case 2:
+                val = *(uint16_t*)self->var->data;
+                break;
+        case 4:
+                val = *(uint32_t*)self->var->data;
+                break;
+        default:
+                return -1;
+        }
+
+        if (print_format_num(self, "%u", val) != 0)
+                return -1;
+
+        return 0;
+}
+
+static int format_num_hexadecimal(struct cat_object *self)
+{
+        uint32_t val;
+        char fstr[8];
+
+        assert(self != NULL);
+
+        switch (self->var->data_size) {
+        case 1:
+                val = *(uint8_t*)self->var->data;
+                strcpy(fstr, "0x%02X");
+                break;
+        case 2:
+                val = *(uint16_t*)self->var->data;
+                strcpy(fstr, "0x%04X");
+                break;
+        case 4:
+                val = *(uint32_t*)self->var->data;
+                strcpy(fstr, "0x%08X");
+                break;
+        default:
+                return -1;
+        }
+
+        if (print_format_num(self, fstr, val) != 0)
+                return -1;
+
+        return 0;
+}
+
+static int format_buffer_hexadecimal(struct cat_object *self)
+{
+        size_t i;
+        uint8_t *buf;
+
+        assert(self != NULL);
+
+        buf = self->var->data;
+        for (i = 0; i < self->var->data_size; i++) {
+                if (print_format_num(self, "%02X", buf[i]) != 0)
+                        return -1;
+        }
+        return 0;
+}
+
+static int print_string_to_buf(struct cat_object *self, char *str)
+{
+        int written;
+        size_t len;
+        
+        len = self->desc->buf_size - self->position;
+        written = snprintf((char*)&self->desc->buf[self->position], len, "%s", str);
+        
+        if ((written < 0) || ((size_t)written >= len))
+                return -1;
+
+        self->position += written;
+        return 0;
+}
+
+static int format_buffer_string(struct cat_object *self)
+{
+        size_t i = 0;
+        char *buf;
+        char ch;
+
+        assert(self != NULL);
+
+        if (print_string_to_buf(self, "\"") != 0)
+                return -1;
+
+        buf = self->var->data;
+        for (i = 0; i < self->var->data_size; i++) {
+                ch = buf[i];
+                if (ch == 0)
+                        break;
+                if (ch == '\\') {
+                        if (print_string_to_buf(self, "\\\\") != 0)
+                                return -1;
+                } else if (ch == '"') {
+                        if (print_string_to_buf(self, "\\\"") != 0)
+                                return -1;
+                } else if (ch == '\n') {
+                        if (print_string_to_buf(self, "\\n") != 0)
+                                return -1;
+                } else {
+                        if (self->position >= self->desc->buf_size)
+                                return -1;
+                        self->desc->buf[self->position++] = ch;
+                        if (self->position >= self->desc->buf_size)
+                                return -1;
+                        self->desc->buf[self->position++] = 0;
+                }
+        }
+
+        if (print_string_to_buf(self, "\"") != 0)
+                return -1;
+
+        return 0;
+}
+
 static int parse_read_args(struct cat_object *self)
 {
         size_t size;
-        char tmp[32];
+        int stat;
 
         assert(self != NULL);
 
@@ -818,31 +986,44 @@ static int parse_read_args(struct cat_object *self)
         
         switch (self->var->type) {
         case CAT_VAR_INT_DEC:
-                sprintf(tmp, "%d", *(int8_t*)self->var->data);
-                strcat((char*)&self->desc->buf[self->position], tmp);
-                self->position += strlen(tmp);
+                stat = format_int_decimal(self);    
                 break;
         case CAT_VAR_UINT_DEC:                
+                stat = format_uint_decimal(self);
                 break;
         case CAT_VAR_NUM_HEX:                
+                stat = format_num_hexadecimal(self);
                 break;
-        case CAT_VAR_BUF_HEX:                
+        case CAT_VAR_BUF_HEX:   
+                stat = format_buffer_hexadecimal(self);     
                 break;
-        case CAT_VAR_BUF_STRING:                
+        case CAT_VAR_BUF_STRING:
+                stat = format_buffer_string(self);          
                 break;
         }
 
+        if (stat < 0) {
+                ack_error(self);
+                return -1;
+        }        
+
         if (++self->index < self->cmd->var_num) {
-                strcat((char*)&self->desc->buf[self->position], ",");
-                self->position += 1;
+                if (self->position >= self->desc->buf_size) {
+                        ack_error(self);
+                        return -1;
+                }
+                self->desc->buf[self->position++] = ',';
                 self->var = &self->cmd->var[self->index];
                 return 1;
         }
 
-        if (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) < 0) {
+        size = self->position;
+
+        if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0)) {
                 ack_error(self);
                 return -1;
         }
+
         print_string(self->iface, "\n");
         print_string(self->iface, self->cmd->name);
         print_string(self->iface, "=");
