@@ -43,14 +43,23 @@ static char var_string[16];
 
 static char const *input_text;
 static size_t input_index;
+static int common_cntr;
 
 static int cmd_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
         return 0;
 }
 
+static int cmd2_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
+{
+        sprintf(data, "test");
+        *data_size = 4;
+        return 0;
+}
+
 static int common_var_read_handler(const struct cat_variable *var)
 {
+        common_cntr++;
         return 0;
 }
 
@@ -106,7 +115,14 @@ static struct cat_command cmds[] = {
 
                 .var = vars,
                 .var_num = sizeof(vars) / sizeof(vars[0])
-        }
+        },
+        {
+                .name = "+TEST",
+                .read = cmd2_read,
+
+                .var = vars,
+                .var_num = sizeof(vars) / sizeof(vars[0])
+        },
 };
 
 static char buf[128];
@@ -162,12 +178,15 @@ static void prepare_input(const char *text)
         var_buf[2] = 0x56;
         var_buf[3] = 0x78;
 
-        sprintf(var_string, "\\\\\\\"test\\\"\\\\"); // \"test"\
+        common_cntr = 0;
+
+        sprintf(var_string, "\\\"test\n");
 
         memset(ack_results, 0, sizeof(ack_results));
 }
 
 static const char test_case_1[] = "\nAT+SET?\n";
+static const char test_case_2[] = "\nAT+TEST?\n";
 
 int main(int argc, char **argv)
 {
@@ -178,19 +197,14 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        printf("%s\n", ack_results);
+        assert(strcmp(ack_results, "\n+SET=-1,255,0xAA,0x0123,0xFF001234,12345678,\"\\\\\\\"test\\n\"\n\nOK\n") == 0);
+        assert(common_cntr == 7);
 
-        // assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n") == 0);
-        
-        // assert(var1 == -1);
-        // assert(var2 == -20);
-        // assert(var3 == -30);
-        // assert(var1b == -1);
-        // assert(var2b == -20);
-        // assert(var3b == -30);
+        prepare_input(test_case_2);
+        while (cat_service(&at) != 0) {};
 
-
-
+        assert(strcmp(ack_results, "\n+TEST=test\n\nOK\n") == 0);
+        assert(common_cntr == 7);
 
 	return 0;
 }
