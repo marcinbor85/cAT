@@ -584,6 +584,65 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
         return -1;
 }
 
+static int parse_buffer_string(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        char ch;
+        int state = 0;
+        size_t size = 0;
+
+        while (1) {
+                ch = self->desc->buf[self->position++];
+                
+                switch (state) {
+                case 0:
+                        if (ch != '"')
+                                return -1;
+                        state = 1;              
+                        break;
+                case 1:
+                        if (ch == 0)
+                                return -1;
+                        if (ch == '\\') {
+                                state = 2;
+                                break;
+                        }
+                        if (ch == '"') {
+                                state = 3;
+                                break;
+                        }
+                        if (size >= self->var->data_size)
+                                return -1;                                
+                        ((uint8_t*)(self->var->data))[size++] = ch;
+                        break;
+                case 2:
+                        if ((ch == '\\') || (ch == '"')) {
+                                if (size >= self->var->data_size)
+                                        return -1;                                
+                                ((uint8_t*)(self->var->data))[size++] = ch;
+                                state = 1;
+                        } else {
+                                return -1;
+                        }
+                        break;
+                case 3:
+                        if ((ch == 0) || (ch == ',')) {
+                                if (size >= self->var->data_size)
+                                        return -1;
+                                ((uint8_t*)(self->var->data))[size] = 0;
+                                self->write_size = size;
+                                return (ch == ',') ? 1 : 0;
+                        } else {
+                                return -1;
+                        }
+                        break;
+                }
+        }
+
+        return -1;
+}
+
 static int validate_int_range(struct cat_object *self, int64_t val)
 {
         switch (self->var->data_size) {
@@ -683,6 +742,11 @@ static int parse_write_args(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_BUF_STRING:
+                stat = parse_buffer_string(self);
+                if (stat < 0) {
+                        ack_error(self);
+                        return -1;
+                }
                 break;
         }
 
