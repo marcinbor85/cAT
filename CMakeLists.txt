@@ -37,6 +37,10 @@ add_executable( test_write tests/test_write.c )
 target_link_libraries( test_write cat )
 add_test( test_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write )
 
+add_executable( test_write_parse tests/test_write_parse.c )
+target_link_libraries( test_write_parse cat )
+add_test( test_write_parse ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_parse )
+
 add_executable( test_write_int_range tests/test_write_int_range.c )
 target_link_libraries( test_write_int_range cat )
 add_test( test_write_int_range ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_int_range )
@@ -49,9 +53,9 @@ add_executable( test_write_hex_range tests/test_write_hex_range.c )
 target_link_libraries( test_write_hex_range cat )
 add_test( test_write_hex_range ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_hex_range )
 
-add_executable( test_write_parse tests/test_write_parse.c )
-target_link_libraries( test_write_parse cat )
-add_test( test_write_parse ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_parse )
+add_executable( test_write_hex_buffer tests/test_write_hex_buffer.c )
+target_link_libraries( test_write_hex_buffer cat )
+add_test( test_write_hex_buffer ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_hex_buffer )
 
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
