@@ -40,7 +40,7 @@ static int8_t var1b, var2b, var3b;
 static char const *input_text;
 static size_t input_index;
 
-static int cmd_write1(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int cmd_write1(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         char tmp[32];
         sprintf(tmp, " CMD1_%ld:", args_num);
@@ -49,7 +49,7 @@ static int cmd_write1(const struct cat_command *cmd, const uint8_t *data, const 
         return 0;
 }
 
-static int cmd_write3(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int cmd_write3(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         char tmp[32];
         sprintf(tmp, " CMD3_%ld:", args_num);

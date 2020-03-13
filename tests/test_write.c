@@ -45,7 +45,7 @@ static int a_run(const struct cat_command *cmd)
         return 0;
 }
 
-static int a_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int a_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         strcat(write_results, " A:");
         strncat(write_results, data, data_size);
@@ -55,7 +55,7 @@ static int a_write(const struct cat_command *cmd, const uint8_t *data, const siz
         return 0;
 }
 
-static int ap_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int ap_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         strcat(write_results, " AP:");
         strncat(write_results, data, data_size);
@@ -65,7 +65,7 @@ static int ap_write(const struct cat_command *cmd, const uint8_t *data, const si
         return 0;
 }
 
-static int test_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int test_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         strcat(write_results, " +TEST:");
         strncat(write_results, data, data_size);

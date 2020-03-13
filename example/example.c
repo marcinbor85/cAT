@@ -74,7 +74,7 @@ static int bytesbuf_write(const struct cat_variable *var, size_t write_size)
         return 0;
 }
 
-static int go_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int go_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         int i = 0;
         
@@ -93,7 +93,7 @@ static int go_write(const struct cat_command *cmd, const uint8_t *data, const si
         return 0;
 }
 
-static int set_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
+static int set_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         printf("<%s>: SET SPEED TO = %d\n",
                 cmd->name,
