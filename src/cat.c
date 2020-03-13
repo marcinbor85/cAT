@@ -225,7 +225,7 @@ static int is_valid_hex_char(const char ch)
         return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F');
 }
 
-static uint8_t convert_hexchar_to_value(const char ch)
+static uint8_t convert_hex_char_to_value(const char ch)
 {
         return ((ch >= '0') && (ch <= '9')) ? (uint8_t)(ch - '0') : (uint8_t)(ch - 'A' + 10U);
 }
@@ -541,7 +541,7 @@ static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
                         if (is_valid_hex_char(ch) != 0) {
                                 state = 3;
                                 val <<= 4;
-                                val += convert_hexchar_to_value(ch);
+                                val += convert_hex_char_to_value(ch);
                         } else {
                                 return -1;
                         }
@@ -573,7 +573,7 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
                         return -1;
                 
                 byte <<= 4;
-                byte += convert_hexchar_to_value(ch);
+                byte += convert_hex_char_to_value(ch);
 
                 if (state != 0) {
                         if (size >= self->var->data_size)
