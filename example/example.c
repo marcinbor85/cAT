@@ -34,28 +34,43 @@ SOFTWARE.
 static int32_t speed;
 static uint8_t x;
 static uint8_t y;
+static uint8_t bytes_buf[4];
 static char message[16];
 
-static int x_write(const struct cat_variable *var)
+static int x_write(const struct cat_variable *var, size_t write_size)
 {
         printf("x variable updated internally to: %d\n", x);
         return 0;
 }
 
-static int y_write(const struct cat_variable *var)
+static int y_write(const struct cat_variable *var, size_t write_size)
 {
         printf("y variable updated internally to: %d\n", y);
         return 0;
 }
 
-static int speed_write(const struct cat_variable *var)
+static int speed_write(const struct cat_variable *var, size_t write_size)
 {
         printf("speed variable updated internally to: %d\n", speed);
         return 0;
 }
 
+static int bytesbuf_write(const struct cat_variable *var, size_t write_size)
+{
+        int i = 0;
+
+        printf("bytes_buf variable updated %d bytes internally to: ", write_size);        
+        for (i = 0; i < sizeof(bytes_buf); i++)
+                printf("%02X", bytes_buf[i]);
+        printf("\n");
+
+        return 0;
+}
+
 static int go_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, size_t args_num)
 {
+        int i = 0;
+        
         printf("<%s>: x=%d y=%d msg=%s @ speed=%d\n",
                 cmd->name,
                 *(uint8_t*)(cmd->var[0].data),
@@ -63,6 +78,11 @@ static int go_write(const struct cat_command *cmd, const uint8_t *data, const si
                 message,
                 speed
         );
+        
+        printf("<bytes>: ");
+        for (i = 0; i < sizeof(bytes_buf); i++)
+                printf("%02X", bytes_buf[i]);
+        printf("\n");
         return 0;
 }
 
@@ -103,6 +123,12 @@ static struct cat_variable set_vars[] = {
                 .data = &speed,
                 .data_size = sizeof(speed),
                 .write = speed_write
+        },
+        {
+                .type = CAT_VAR_BUF_HEX,
+                .data = &bytes_buf,
+                .data_size = sizeof(bytes_buf),
+                .write = bytesbuf_write
         }
 };
 
@@ -119,7 +145,6 @@ static struct cat_command cmds[] = {
                 .write = set_write,
                 .var = set_vars,
                 .var_num = sizeof(set_vars) / sizeof(set_vars[0]),
-                .need_all_vars = true
         },
         {
                 .name = "#TEST",
