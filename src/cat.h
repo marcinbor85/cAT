@@ -47,14 +47,14 @@ typedef enum {
 } cat_var_type;
 
 /* write variable function handler */
-typedef int (*cat_var_write_handler)(const struct cat_variable *var);
+typedef int (*cat_var_write_handler)(const struct cat_variable *var, const size_t write_size);
 /* read variable function handler */
 typedef int (*cat_var_read_handler)(const struct cat_variable *var);
 
 struct cat_variable {
         cat_var_type type; /* variable type (needed for parsing and validating) */
         void *data; /* generic pointer to statically allocated memory for variable data read/write/validate operations */
-        size_t data_size; /* variable data size, pointer by data pointer */
+        size_t data_size; /* variable data size, pointed by data pointer */
 
         cat_var_write_handler write; /* write variable handler */
         cat_var_read_handler read; /* read variable handler */
@@ -132,6 +132,7 @@ struct cat_object {
         size_t index; /* index used to iterate over commands and variables */
         size_t length; /* length of input command name and command arguments */
         size_t position; /* position of actually parsed char in arguments string */
+        size_t write_size; /* size of parsed buffer hex or buffer string */
 
         struct cat_command const *cmd; /* pointer to current command descriptor */
         struct cat_variable const *var; /* pointer to current variable descriptor */

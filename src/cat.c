@@ -546,7 +546,45 @@ static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
         return -1;
 }
 
-static int validate_int_range(void *dest, int64_t val, int size)
+static int parse_buffer_hexadecimal(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        char ch;
+        uint8_t byte = 0;
+        int state = 0;
+        size_t size = 0;
+
+        while (1) {
+                ch = self->desc->buf[self->position++];
+                ch = to_upper(ch);
+
+                if ((size > 0) && (state == 0) && ((ch == 0) || (ch == ','))) {
+                        self->write_size = size;
+                        return (ch == ',') ? 1 : 0;
+                }
+
+                if (is_valid_hex_char(ch) == 0)
+                        return -1;
+                
+                byte <<= 4;
+                byte += ((ch >= '0') && (ch <= '9')) ? (uint8_t)(ch - '0') : (uint8_t)(ch - 'A' + 10U);
+
+                if (state != 0) {
+                        ((uint8_t*)(self->var->data))[size++] = byte;
+                        byte = 0;
+
+                        if (size > self->var->data_size)
+                                return -1;
+                }
+                
+                state = !state;
+        }
+
+        return -1;
+}
+
+static int validate_int_range(void *dest, int64_t val, size_t size)
 {
         switch (size) {
         case 1:
@@ -570,7 +608,7 @@ static int validate_int_range(void *dest, int64_t val, int size)
         return 0;
 }
 
-static int validate_uint_range(void *dest, uint64_t val, int size)
+static int validate_uint_range(void *dest, uint64_t val, size_t size)
 {
         switch (size) {
         case 1:
@@ -612,6 +650,7 @@ static int parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return -1;
                 }
+                self->write_size = self->var->data_size;
                 break;
         case CAT_VAR_UINT_DEC:
                 stat = parse_uint_decimal(self, (uint64_t*)&val);
@@ -623,6 +662,7 @@ static int parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return -1;
                 }
+                self->write_size = self->var->data_size;
                 break;
         case CAT_VAR_NUM_HEX:
                 stat = parse_num_hexadecimal(self, (uint64_t*)&val);
@@ -634,14 +674,20 @@ static int parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return -1;
                 }
+                self->write_size = self->var->data_size;
                 break;
         case CAT_VAR_BUF_HEX:
+                stat = parse_buffer_hexadecimal(self);
+                if (stat < 0) {
+                        ack_error(self);
+                        return -1;
+                }
                 break;
         case CAT_VAR_BUF_STRING:
                 break;
         }
 
-        if ((self->var->write != NULL) && (self->var->write(self->var) != 0)) {
+        if ((self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
                 ack_error(self);
                 return -1;
         }
