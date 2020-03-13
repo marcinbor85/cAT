@@ -571,11 +571,10 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
                 byte += ((ch >= '0') && (ch <= '9')) ? (uint8_t)(ch - '0') : (uint8_t)(ch - 'A' + 10U);
 
                 if (state != 0) {
+                        if (size >= self->var->data_size)
+                                return -1;
                         ((uint8_t*)(self->var->data))[size++] = byte;
                         byte = 0;
-
-                        if (size > self->var->data_size)
-                                return -1;
                 }
                 
                 state = !state;
