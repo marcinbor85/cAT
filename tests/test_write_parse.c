@@ -58,20 +58,23 @@ static int cmd_write3(const struct cat_command *cmd, const uint8_t *data, const 
         return 0;
 }
 
-static int var1_write(const struct cat_variable *var)
+static int var1_write(const struct cat_variable *var, size_t write_size)
 {
+        assert(write_size == 1);
         var1b = *(int8_t*)(var->data);
         return 0;
 }
 
-static int var2_write(const struct cat_variable *var)
+static int var2_write(const struct cat_variable *var, size_t write_size)
 {
+        assert(write_size == 1);
         var2b = *(int8_t*)(var->data);
         return 0;
 }
 
-static int var3_write(const struct cat_variable *var)
+static int var3_write(const struct cat_variable *var, size_t write_size)
 {
+        assert(write_size == 1);
         var3b = *(int8_t*)(var->data);
         return 0;
 }
