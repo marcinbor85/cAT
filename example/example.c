@@ -35,7 +35,8 @@ static int32_t speed;
 static uint8_t x;
 static uint8_t y;
 static uint8_t bytes_buf[4];
-static char message[16];
+static char msg[16];
+static bool quit_flag;
 
 static int x_write(const struct cat_variable *var, size_t write_size)
 {
@@ -46,6 +47,12 @@ static int x_write(const struct cat_variable *var, size_t write_size)
 static int y_write(const struct cat_variable *var, size_t write_size)
 {
         printf("y variable updated internally to: %d\n", y);
+        return 0;
+}
+
+static int msg_write(const struct cat_variable *var, size_t write_size)
+{
+        printf("msg variable updated %d bytes internally to: <%s>\n", write_size, msg);
         return 0;
 }
 
@@ -75,7 +82,7 @@ static int go_write(const struct cat_command *cmd, const uint8_t *data, const si
                 cmd->name,
                 *(uint8_t*)(cmd->var[0].data),
                 *(uint8_t*)(cmd->var[1].data),
-                message,
+                msg,
                 speed
         );
         
@@ -101,6 +108,13 @@ static int test_run(const struct cat_command *cmd)
         return 0;
 }
 
+static int quit_run(const struct cat_command *cmd)
+{
+        printf("QUIT: <%s>", cmd->name);
+        quit_flag = true;
+        return 0;
+}
+
 
 static struct cat_variable go_vars[] = {
         {
@@ -114,6 +128,12 @@ static struct cat_variable go_vars[] = {
                 .data = &y,
                 .data_size = sizeof(y),
                 .write = y_write
+        },
+        {
+                .type = CAT_VAR_BUF_STRING,
+                .data = msg,
+                .data_size = sizeof(msg),
+                .write = msg_write
         }
 };
 
@@ -149,7 +169,12 @@ static struct cat_command cmds[] = {
         {
                 .name = "#TEST",
                 .run = test_run
-        }
+        },
+        {
+                .name = "#QUIT",
+                .run = quit_run
+        },
+
 };
 
 static char buf[128];
@@ -188,7 +213,9 @@ int main(int argc, char **argv)
 
 	cat_init(&at, &desc, &iface);
 
-        while (cat_service(&at) != 0) {};
+        while ((cat_service(&at) != 0) && (quit_flag == 0)) {};
+
+        printf("Bye!\n");
 
 	return 0;
 }
