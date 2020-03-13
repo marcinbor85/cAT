@@ -78,7 +78,8 @@ typedef enum {
         CAT_STATE_COMMAND_FOUND,
         CAT_STATE_COMMAND_NOT_FOUND,
         CAT_STATE_PARSE_COMMAND_ARGS,
-        CAT_STATE_PARSE_WRITE_ARGS        
+        CAT_STATE_PARSE_WRITE_ARGS,
+        CAT_STATE_PARSE_READ_ARGS 
 } cat_state;
 
 /* enum type with prefix parser fsm state */

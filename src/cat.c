@@ -403,6 +403,13 @@ static int command_found(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_CMD_TYPE_READ:
+                if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
+                        self->state = CAT_STATE_PARSE_READ_ARGS;
+                        self->position = 0;
+                        self->index = 0;
+                        self->var = &self->cmd->var[self->index];
+                        break;
+                }
                 if (self->cmd->read == NULL) {
                         ack_error(self);
                         break;
@@ -788,6 +795,55 @@ static int parse_write_args(struct cat_object *self)
         return 1;
 }
 
+static int parse_read_args(struct cat_object *self)
+{
+        size_t size;
+        char tmp[32];
+
+        assert(self != NULL);
+
+        if ((self->var->read != NULL) && (self->var->read(self->var) != 0)) {
+                ack_error(self);
+                return -1;
+        }
+        
+        switch (self->var->type) {
+        case CAT_VAR_INT_DEC:
+                sprintf(tmp, "%d", *(int8_t*)self->var->data);
+                strcat((char*)&self->desc->buf[self->position], tmp);
+                self->position += strlen(tmp);
+                break;
+        case CAT_VAR_UINT_DEC:                
+                break;
+        case CAT_VAR_NUM_HEX:                
+                break;
+        case CAT_VAR_BUF_HEX:                
+                break;
+        case CAT_VAR_BUF_STRING:                
+                break;
+        }
+
+        if (++self->index < self->cmd->var_num) {
+                strcat((char*)&self->desc->buf[self->position], ",");
+                self->position += 1;
+                self->var = &self->cmd->var[self->index];
+                return 1;
+        }
+
+        if (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) < 0) {
+                ack_error(self);
+                return -1;
+        }
+        print_string(self->iface, "\n");
+        print_string(self->iface, self->cmd->name);
+        print_string(self->iface, "=");
+        print_binary(self->iface, self->desc->buf, size);
+        print_string(self->iface, "\n");
+
+        ack_ok(self);
+        return 1;
+}
+
 static int parse_command_args(struct cat_object *self)
 {
         assert(self != NULL);
@@ -857,6 +913,8 @@ int cat_service(struct cat_object *self)
                 return parse_command_args(self);
         case CAT_STATE_PARSE_WRITE_ARGS:
                 return parse_write_args(self);
+        case CAT_STATE_PARSE_READ_ARGS:
+                return parse_read_args(self);
         default:
                 break;
         }
