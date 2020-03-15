@@ -1,0 +1,10 @@
+0.4.0
+* high level parsing for command arguments
+* int, uint, hex, hexbuf, string argument types
+* validating arguments values range
+
+0.3.0
+* independent buffers (parsing buffer and state buffer)
+
+0.2.0
+* passing command struct instead of command name in command handlers
