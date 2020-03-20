@@ -81,13 +81,20 @@ static void print_new_line(struct cat_object *self)
         }
 }
 
-static void ack_error(struct cat_object *self)
+static void print_line(struct cat_object *self, const char *buf)
 {
         assert(self != NULL);
 
         print_new_line(self);
-        print_string(self->iface, "ERROR");
+        print_string(self->iface, buf);
         print_new_line(self);
+}
+
+static void ack_error(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        print_line(self, "ERROR");
         reset_state(self);
 }
 
@@ -95,10 +102,19 @@ static void ack_ok(struct cat_object *self)
 {
         assert(self != NULL);
 
-        print_new_line(self);
-        print_string(self->iface, "OK");
-        print_new_line(self);
+        print_line(self, "OK");
         reset_state(self);
+}
+
+static void print_buffer(struct cat_object *self, const size_t size)
+{
+        assert(self != NULL);
+
+        print_new_line(self);
+        print_string(self->iface, self->cmd->name);
+        print_string(self->iface, "=");
+        print_binary(self->iface, self->desc->buf, size);
+        print_new_line(self);
 }
 
 static int read_cmd_char(struct cat_object *self)
@@ -390,12 +406,7 @@ static int wait_test_acknowledge(struct cat_object *self)
                         ack_error(self);
                         break;
                 }
-                print_new_line(self);
-                print_string(self->iface, self->cmd->name);
-                print_string(self->iface, "=");
-                print_binary(self->iface, self->desc->buf, size);
-                print_new_line(self);
-
+                print_buffer(self, size);
                 ack_ok(self);
                 break;
         case '\r':
@@ -475,11 +486,7 @@ static int command_found(struct cat_object *self)
                         ack_error(self);
                         break;
                 }
-                print_new_line(self);
-                print_string(self->iface, self->cmd->name);
-                print_string(self->iface, "=");
-                print_binary(self->iface, self->desc->buf, size);
-                print_new_line(self);
+                print_buffer(self, size);
 
                 ack_ok(self);
                 break;
@@ -1084,11 +1091,7 @@ static int parse_read_args(struct cat_object *self)
                 return -1;
         }
 
-        print_new_line(self);
-        print_string(self->iface, self->cmd->name);
-        print_string(self->iface, "=");
-        print_binary(self->iface, self->desc->buf, size);
-        print_new_line(self);
+        print_buffer(self, size);
 
         ack_ok(self);
         return 1;
@@ -1146,11 +1149,7 @@ static int parse_test_args(struct cat_object *self)
                 return -1;
         }
 
-        print_new_line(self);
-        print_string(self->iface, self->cmd->name);
-        print_string(self->iface, "=");
-        print_binary(self->iface, self->desc->buf, size);
-        print_new_line(self);
+        print_buffer(self, size);
 
         ack_ok(self);
         return 1;
