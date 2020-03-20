@@ -39,16 +39,36 @@ struct cat_variable;
 
 /* enum type with variable type definitions */
 typedef enum {
-        CAT_VAR_INT_DEC = 0,
-        CAT_VAR_UINT_DEC,
-        CAT_VAR_NUM_HEX,
-        CAT_VAR_BUF_HEX,
-        CAT_VAR_BUF_STRING
+        CAT_VAR_INT_DEC = 0, /* decimal encoded signed integer variable */
+        CAT_VAR_UINT_DEC, /* decimal encoded unsigned integer variable */
+        CAT_VAR_NUM_HEX, /* hexadecimal encoded unsigned integer variable */
+        CAT_VAR_BUF_HEX, /* asciihex encoded bytes array */
+        CAT_VAR_BUF_STRING /* string variable */
 } cat_var_type;
 
-/* write variable function handler */
+/**
+ * Write variable function handler
+ * 
+ * This callback function is called after variable update immediatly.
+ * User application can validate writed value and check for amount of data size was written.
+ * This handler is optional, so when is not defined, operations will be fully automatically.
+ * 
+ * @param var - pointer to struct descriptor of parsed variable
+ * @param write_size - size of data was written (useful especially with hexbuf var type)
+ * @return 0 - ok, else error and stop parsing
+ * */
 typedef int (*cat_var_write_handler)(const struct cat_variable *var, const size_t write_size);
-/* read variable function handler */
+
+/**
+ * Read variable function handler
+ * 
+ * This callback function is called just before variable value read.
+ * User application can copy data from private fields to variable connected with parsed command.
+ * This handler is optional, so when is not defined, operations will be fully automatically.
+ * 
+ * @param var - pointer to struct descriptor of parsed variable
+ * @return 0 - ok, else error and stop parsing
+ * */
 typedef int (*cat_var_read_handler)(const struct cat_variable *var);
 
 struct cat_variable {
@@ -61,13 +81,67 @@ struct cat_variable {
         cat_var_read_handler read; /* read variable handler */
 };
 
-/* write command function handler */
+/**
+ * Write command function handler (AT+CMD=)
+ * 
+ * This callback function is called after parsing all connected variables.
+ * User application can validate all variales at once at this moment, or copy them to the other application layer buffer.
+ * User can check number of variables or make custom process of parsing non standard arguments format.
+ * This handler is optional, so when is not defined, operations on variables will be fully automatically.
+ * If neither write handler nor variables not defined, then write command type is not available.
+ * 
+ * @param cmd - pointer to struct descriptor of processed command
+ * @param data - pointer to arguments buffer for custom parsing
+ * @param data_size - length of arguments buffer
+ * @param args_num - number of passed arguments connected to variables
+ * @return 0 - ok, else error and stop parsing
+ * */
 typedef int (*cat_cmd_write_handler)(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num);
-/* read command function handler */
+
+/**
+ * Read command function handler (AT+CMD?)
+ * 
+ * This callback function is called after format all connected variables.
+ * User application can change automatic response, or add some custom data to response.
+ * This handler is optional, so when is not defined, operations on variables will be fully automatically.
+ * If neither read handler nor variables not defined, then read command type is not available.
+ * 
+ * @param cmd - pointer to struct descriptor of processed command
+ * @param data - pointer to arguments buffer for custom parsing
+ * @param data_size - pointer to length of arguments buffer (can be modifed if needed)
+ * @param max_data_size - maximum length of buffer pointed by data pointer
+ * @return 0 - ok, else error and stop parsing
+ * */
 typedef int (*cat_cmd_read_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
-/* run command function handler */
+
+/**
+ * Run command function handler (AT+CMD)
+ * 
+ * No operations on variables are done.
+ * This handler is optional.
+ * If run handler not defined, then run command type is not available.
+ * 
+ * @param cmd - pointer to struct descriptor of processed command
+ * @return 0 - ok, else error and stop parsing
+ * */
 typedef int (*cat_cmd_run_handler)(const struct cat_command *cmd);
-/* test command function handler */
+
+/**
+ * Test command function handler (AT+CMD=?)
+ * 
+ * This callback function is called after format all connected variables.
+ * User application can change automatic response, or add some custom data to response.
+ * This handler is optional, so when is not defined, operations on variables will be fully automatically.
+ * If neither test handler nor variables not defined, then test command type is not available.
+ * Exception of this rule is write command without variables.
+ * In this case, the "question mark" will be passed as a custom argument to the write handler.
+ * 
+ * @param cmd - pointer to struct descriptor of processed command
+ * @param data - pointer to arguments buffer for custom parsing
+ * @param data_size - pointer to length of arguments buffer (can be modifed if needed)
+ * @param max_data_size - maximum length of buffer pointed by data pointer
+ * @return 0 - ok, else error and stop parsing
+ * */
 typedef int (*cat_cmd_test_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
 
 /* enum type with main at parser fsm state */
