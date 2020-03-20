@@ -18,8 +18,8 @@ target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 install( TARGETS cat DESTINATION lib )
 install( FILES src/cat.h DESTINATION include/cat )
 
-add_executable( example example/example.c )
-target_link_libraries( example cat )
+add_executable( demo example/demo.c )
+target_link_libraries( demo cat )
 
 add_executable( test_parse tests/test_parse.c )
 target_link_libraries( test_parse cat )

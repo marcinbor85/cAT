@@ -133,19 +133,22 @@ static struct cat_variable go_vars[] = {
                 .type = CAT_VAR_UINT_DEC,
                 .data = &x,
                 .data_size = sizeof(x),
-                .write = x_write
+                .write = x_write,
+                .name = "x"
         },
         {
                 .type = CAT_VAR_UINT_DEC,
                 .data = &y,
                 .data_size = sizeof(y),
-                .write = y_write
+                .write = y_write,
+                .name = "y"
         },
         {
                 .type = CAT_VAR_BUF_STRING,
                 .data = msg,
                 .data_size = sizeof(msg),
-                .write = msg_write
+                .write = msg_write,
+                .name = "msg"
         }
 };
 
@@ -154,19 +157,22 @@ static struct cat_variable set_vars[] = {
                 .type = CAT_VAR_INT_DEC,
                 .data = &speed,
                 .data_size = sizeof(speed),
-                .write = speed_write
+                .write = speed_write,
+                .name = "speed"
         },
         {
                 .type = CAT_VAR_NUM_HEX,
                 .data = &adr,
                 .data_size = sizeof(adr),
-                .write = adr_write
+                .write = adr_write,
+                .name = "address"                
         },
         {
                 .type = CAT_VAR_BUF_HEX,
                 .data = &bytes_buf,
                 .data_size = sizeof(bytes_buf),
-                .write = bytesbuf_write
+                .write = bytesbuf_write,
+                .name = "buffer"
         }
 };
 
