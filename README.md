@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/marcinbor85/cat.svg?branch=master)](https://travis-ci.org/marcinbor85/cat)
 # libcat (cAT)
 Plain C library for parsing AT commands.
 
