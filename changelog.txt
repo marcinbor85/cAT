@@ -1,3 +1,8 @@
+0.5.0
+* test command parser with auto help messages
+* output string end-line encoding same as input string
+* very basic demo example application added
+
 0.4.0
 * high level parsing for command arguments
 * int, uint, hex, hexbuf, string argument types
