@@ -53,7 +53,7 @@ static int y_write(const struct cat_variable *var, size_t write_size)
 
 static int msg_write(const struct cat_variable *var, size_t write_size)
 {
-        printf("msg variable updated %u bytes internally to: <%s>\n", write_size, msg);
+        printf("msg variable updated %ul bytes internally to: <%s>\n", write_size, msg);
         return 0;
 }
 
@@ -73,7 +73,7 @@ static int bytesbuf_write(const struct cat_variable *var, size_t write_size)
 {
         int i = 0;
 
-        printf("bytes_buf variable updated %u bytes internally to: ", write_size);        
+        printf("bytes_buf variable updated %ul bytes internally to: ", write_size);        
         for (i = 0; i < sizeof(bytes_buf); i++)
                 printf("%02X", bytes_buf[i]);
         printf("\n");
