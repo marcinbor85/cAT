@@ -5,9 +5,11 @@ Plain C library for parsing AT commands.
 * blazing fast and robust implementation
 * 100% static implementation (without any dynamic memory allocation)
 * very small footprint (both RAM and ROM)
-* support for read, write and run type commands
+* support for READ, WRITE, TEST and RUN type commands
 * commands shortcuts (auto select best command candidate)
 * high-level memory variables mapping arguments parsing
+* automatic arguments types validating
+* automatic format test responses for commands with variables
 * CRLF and LF compatible
 * case-insensitive
 * dedicated for embedded systems
@@ -25,8 +27,30 @@ Build and install:
 ```sh
 cmake .
 make
-make check
+make test
 sudo make install
+```
+
+## Example demo posibilities
+
+```console
+at+print=?                                      # TEST command
++PRINT=<X:UINT8>,<Y:UINT8>,<MESSAGE:STRING>     # Automatic response
+OK                                              # Automatic acknowledge
+
+at+print?                                       # READ command
++PRINT=0,0,""                                   # Automatic response
+OK                                              # Automatic acknowledge
+
+at+print=xyz,-2                                 # WRITE command
+ERROR                                           # Automatic acknowledge
+
+at+print=1,2,"test"                             # WRITE command
+OK                                              # Automatic acknowledge
+
+at+print                                        # RUN command
+some printing at (1,2) with text "test"         # Manual response
+OK                                              # Automatic acknowledge
 ```
 
 ## Usage
@@ -44,7 +68,8 @@ static struct cat_variable go_vars[] = {
                 .type = CAT_VAR_UINT_DEC, /* unsigned int variable */
                 .data = &x,
                 .data_size = sizeof(x),
-                .write = x_write
+                .write = x_write,
+                .name = "X"
         },
         {
                 .type = CAT_VAR_UINT_DEC, /* unsigned int variable */

@@ -12,7 +12,7 @@ include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
 add_library( cat SHARED ${SRC_FILES} )
-set_target_properties( cat PROPERTIES VERSION 0.4.0 SOVERSION 1 )
+set_target_properties( cat PROPERTIES VERSION 0.5.0 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
 install( TARGETS cat DESTINATION lib )
@@ -20,6 +20,9 @@ install( FILES src/cat.h DESTINATION include/cat )
 
 add_executable( demo example/demo.c )
 target_link_libraries( demo cat )
+
+add_executable( basic example/basic.c )
+target_link_libraries( basic cat )
 
 add_executable( test_parse tests/test_parse.c )
 target_link_libraries( test_parse cat )
