@@ -106,14 +106,14 @@ static void ack_ok(struct cat_object *self)
         reset_state(self);
 }
 
-static void print_buffer(struct cat_object *self, const size_t size)
+static void print_buffer(struct cat_object *self)
 {
         assert(self != NULL);
 
         print_new_line(self);
         print_string(self->iface, self->cmd->name);
         print_string(self->iface, "=");
-        print_binary(self->iface, self->desc->buf, size);
+        print_binary(self->iface, self->desc->buf, self->position);
         print_new_line(self);
 }
 
@@ -386,8 +386,6 @@ static int wait_read_acknowledge(struct cat_object *self)
 
 static int wait_test_acknowledge(struct cat_object *self)
 {
-        size_t size;
-
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
@@ -395,18 +393,19 @@ static int wait_test_acknowledge(struct cat_object *self)
 
         switch (self->current_char) {
         case '\n':
+                self->position = 0;
                 if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
                         self->state = CAT_STATE_PARSE_TEST_ARGS;
-                        self->position = 0;
                         self->index = 0;
                         self->var = &self->cmd->var[self->index];
                         break;
                 }
-                if (self->cmd->test(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0) {
+                if (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
                         ack_error(self);
                         break;
                 }
-                print_buffer(self, size);
+                print_buffer(self);
+
                 ack_ok(self);
                 break;
         case '\r':
@@ -452,8 +451,6 @@ static int search_command(struct cat_object *self)
 
 static int command_found(struct cat_object *self)
 {
-        size_t size;
-
         assert(self != NULL);
 
         switch (self->cmd_type) {
@@ -471,9 +468,9 @@ static int command_found(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_CMD_TYPE_READ:
+                self->position = 0;
                 if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
                         self->state = CAT_STATE_PARSE_READ_ARGS;
-                        self->position = 0;
                         self->index = 0;
                         self->var = &self->cmd->var[self->index];
                         break;
@@ -482,11 +479,11 @@ static int command_found(struct cat_object *self)
                         ack_error(self);
                         break;
                 }
-                if (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0) {
+                if (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
                         ack_error(self);
                         break;
                 }
-                print_buffer(self, size);
+                print_buffer(self);
 
                 ack_ok(self);
                 break;
@@ -983,7 +980,7 @@ static int format_buffer_hexadecimal(struct cat_object *self)
         return 0;
 }
 
-static int print_string_to_buf(struct cat_object *self, char *str)
+static int print_string_to_buf(struct cat_object *self, const char *str)
 {
         int written;
         size_t len;
@@ -1039,9 +1036,86 @@ static int format_buffer_string(struct cat_object *self)
         return 0;
 }
 
+static int format_info_type(struct cat_object *self)
+{
+        char var_type[8];
+
+        assert(self != NULL);
+
+        switch (self->var->type) {
+        case CAT_VAR_INT_DEC:
+                switch (self->var->data_size) {
+                case 1:
+                        strcpy(var_type, "INT8");
+                        break;
+                case 2:
+                        strcpy(var_type, "INT16");
+                        break;
+                case 4:
+                        strcpy(var_type, "INT32");
+                        break;
+                default:
+                        return -1;
+                }
+                break;
+        case CAT_VAR_UINT_DEC:                
+                switch (self->var->data_size) {
+                case 1:
+                        strcpy(var_type, "UINT8");
+                        break;
+                case 2:
+                        strcpy(var_type, "UINT16");
+                        break;
+                case 4:
+                        strcpy(var_type, "UINT32");
+                        break;
+                default:
+                        return -1;
+                }
+                break;
+        case CAT_VAR_NUM_HEX:                
+                switch (self->var->data_size) {
+                case 1:
+                        strcpy(var_type, "HEX8");
+                        break;
+                case 2:
+                        strcpy(var_type, "HEX16");
+                        break;
+                case 4:
+                        strcpy(var_type, "HEX32");
+                        break;
+                default:
+                        return -1;
+                }
+                break;
+                break;
+        case CAT_VAR_BUF_HEX:   
+                strcpy(var_type, "HEXBUF");
+                break;
+        case CAT_VAR_BUF_STRING:
+                strcpy(var_type, "STRING");
+                break;
+        }
+
+        if (print_string_to_buf(self, "<") != 0)
+                return -1;
+        if (self->var->name != NULL) {
+                if (print_string_to_buf(self, self->var->name) != 0)
+                        return -1;
+                if (print_string_to_buf(self, ":") != 0)
+                        return -1;
+        }
+        if (print_string_to_buf(self, var_type) != 0)
+                return -1;
+        if (print_string_to_buf(self, ">") != 0)
+                return -1;
+
+
+        return 0;
+}
+
 static int parse_read_args(struct cat_object *self)
 {
-        size_t size;
         int stat;
 
         assert(self != NULL);
@@ -1084,14 +1158,11 @@ static int parse_read_args(struct cat_object *self)
                 return 1;
         }
 
-        size = self->position;
-
-        if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0)) {
+        if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0)) {
                 ack_error(self);
                 return -1;
         }
-
-        print_buffer(self, size);
+        print_buffer(self);
 
         ack_ok(self);
         return 1;
@@ -1099,38 +1170,12 @@ static int parse_read_args(struct cat_object *self)
 
 static int parse_test_args(struct cat_object *self)
 {
-        size_t size;
-        int stat;
-
         assert(self != NULL);
 
-        if ((self->var->read != NULL) && (self->var->read(self->var) != 0)) {
+        if (format_info_type(self) < 0) {
                 ack_error(self);
                 return -1;
         }
-        
-        switch (self->var->type) {
-        case CAT_VAR_INT_DEC:
-                stat = format_int_decimal(self);    
-                break;
-        case CAT_VAR_UINT_DEC:                
-                stat = format_uint_decimal(self);
-                break;
-        case CAT_VAR_NUM_HEX:                
-                stat = format_num_hexadecimal(self);
-                break;
-        case CAT_VAR_BUF_HEX:   
-                stat = format_buffer_hexadecimal(self);     
-                break;
-        case CAT_VAR_BUF_STRING:
-                stat = format_buffer_string(self);          
-                break;
-        }
-
-        if (stat < 0) {
-                ack_error(self);
-                return -1;
-        }        
 
         if (++self->index < self->cmd->var_num) {
                 if (self->position >= self->desc->buf_size) {
@@ -1142,14 +1187,11 @@ static int parse_test_args(struct cat_object *self)
                 return 1;
         }
 
-        size = self->position;
-
-        if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0)) {
+        if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0)) {
                 ack_error(self);
                 return -1;
         }
-
-        print_buffer(self, size);
+        print_buffer(self);
 
         ack_ok(self);
         return 1;
@@ -1185,10 +1227,12 @@ static int parse_command_args(struct cat_object *self)
                 self->cr_flag = true;
                 break;
         default:
-                if ((self->length == 0) && (self->current_char == '?') && (self->cmd->test != NULL)) {
-                        self->cmd_type = CAT_CMD_TYPE_TEST;
-                        self->state = CAT_STATE_WAIT_TEST_ACKNOWLEDGE;
-                        break;
+                if ((self->length == 0) && (self->current_char == '?')) {
+                        if ((self->cmd->test != NULL) || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {
+                                self->cmd_type = CAT_CMD_TYPE_TEST;
+                                self->state = CAT_STATE_WAIT_TEST_ACKNOWLEDGE;
+                                break;
+                        }
                 }
 
                 if (self->length >= self->desc->buf_size) {

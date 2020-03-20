@@ -52,6 +52,7 @@ typedef int (*cat_var_write_handler)(const struct cat_variable *var, const size_
 typedef int (*cat_var_read_handler)(const struct cat_variable *var);
 
 struct cat_variable {
+        const char *name; /* variable name (optional - using only for auto format test command response) */
         cat_var_type type; /* variable type (needed for parsing and validating) */
         void *data; /* generic pointer to statically allocated memory for variable data read/write/validate operations */
         size_t data_size; /* variable data size, pointed by data pointer */
