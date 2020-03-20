@@ -41,13 +41,13 @@ static bool quit_flag;
 
 static int x_write(const struct cat_variable *var, size_t write_size)
 {
-        printf("x variable updated internally to: %d\n", x);
+        printf("x variable updated internally to: %u\n", x);
         return 0;
 }
 
 static int y_write(const struct cat_variable *var, size_t write_size)
 {
-        printf("y variable updated internally to: %d\n", y);
+        printf("y variable updated internally to: %u\n", y);
         return 0;
 }
 
