@@ -137,7 +137,7 @@ static void prepare_input(const char *text)
         memset(read_results, 0, sizeof(read_results));
 }
 
-static const char test_case_1[] = "\nAT\nAT+\nAT+?\nATA?\nATAP\nATAP?\nATAPA?\nAT+TEST?\nAT+te?\nAT+e?\nAT+empTY?\nATA\n";
+static const char test_case_1[] = "\nAT\r\nAT+\nAT+?\nATA?\r\nATAP\nATAP?\nATAPA?\nAT+TEST?\nAT+te?\nAT+e?\nAT+empTY?\r\nATA\r\n";
 
 int main(int argc, char **argv)
 {
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nERROR\n\nA=A-val\n\nOK\n\nERROR\n\nAP=\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\r\nOK\r\n\nERROR\n\nERROR\n\r\nA=A-val\r\n\r\nOK\r\n\nERROR\n\nAP=\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\r\nERROR\r\n\r\nOK\r\n") == 0);
         assert(strcmp(run_results, " A_A") == 0);
         assert(strcmp(read_results, " A:A AP:AP +TEST:+TEST +TEST:+TEST") == 0);
 

@@ -120,7 +120,7 @@ static void prepare_input(const char *text)
         memset(write_results, 0, sizeof(write_results));
 }
 
-static const char test_case_1[] = "\nAT+SET=0\nAT+SET=\"\\\"abcd\\\"\"\nAT+SET=\"\"a\nAT+SET=\"1122334\"\nAT+SET=\"t\"\n";
+static const char test_case_1[] = "\nAT+SET=0\nAT+SET=\"\\\"abcd\\\"\"\nAT+SET=\"\"a\nAT+SET=\"1122334\"\nAT+SET=\"t\"\r\n";
 static const char test_case_2[] = "\nAT+SET=\"12345678\"\nAT+SET=\"\"\nAT+SET=\"\\\\\\\\\"\nAT+SET=\"r1\\nr2\\n\"\n";
 
 int main(int argc, char **argv)
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
         
-        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nERROR\n\nOK\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nERROR\n\nOK\n\r\nOK\r\n") == 0);
         assert(strcmp(write_results, " CMD:\"\\\"abcd\\\"\" CMD:\"1122334\" CMD:\"t\"") == 0);
 
         assert(strcmp(var, "t") == 0);

@@ -130,7 +130,7 @@ static void prepare_input(const char *text)
         memset(ack_results, 0, sizeof(ack_results));
 }
 
-static const char test_case_1[] = "\nAT\nAT+\nATA\nATAP\nATAPA\nAT+TEST\nAT+te\nAT+e\nAT+empTY\naTf\nAtFoRcE\n";
+static const char test_case_1[] = "\nAT\nAT+\nATA\r\nATAP\nATAPA\nAT+TEST\nAT+te\nAT+e\nAT+empTY\naTf\nAtFoRcE\n";
 
 int main(int argc, char **argv)
 {
@@ -141,7 +141,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n") == 0);
+        assert(strcmp(ack_results, "\nOK\n\nERROR\n\r\nOK\r\n\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n") == 0);
         assert(strcmp(run_results, " A:A AP:AP +TEST:+TEST +TEST:+TEST FORCE:FORCE FORCE:FORCE") == 0);
         
 	return 0;

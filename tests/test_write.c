@@ -138,7 +138,7 @@ static void prepare_input(const char *text)
         memset(write_results, 0, sizeof(write_results));
 }
 
-static const char test_case_1[] = "\nAT\nAT+\nAT+?\nATA=123\nATA=\nATAP?\nATAP=11\r22\r\nAT+TEST=456\nAT+te=789\nAT+e=1\nAT+empTY=2\nATA\n";
+static const char test_case_1[] = "\nAT\nAT+\nAT+?\nATA=123\r\nATA=\nATAP?\nATAP=11\r22\r\nAT+TEST=456\nAT+te=789\nAT+e=1\nAT+empTY=2\r\nATA\n";
 
 int main(int argc, char **argv)
 {
@@ -149,7 +149,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
         
-        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\nOK\n\nERROR\n\nERROR\n\r\nOK\r\n\nOK\n\nERROR\n\r\nOK\r\n\nERROR\n\nERROR\n\nERROR\n\r\nERROR\r\n\nOK\n") == 0);
         assert(strcmp(run_results, " A_A") == 0);
         assert(strcmp(write_results, " A:123 A: AP:1122 +TEST:456 +TEST:789") == 0);
 

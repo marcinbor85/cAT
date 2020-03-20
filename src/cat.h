@@ -140,6 +140,7 @@ struct cat_object {
         char current_char; /* current received char from input stream */
         cat_state state; /* current fsm state */
         cat_prefix_state prefix_state; /* current prefix fsm state */
+        bool cr_flag; /* flag for detect <cr> char in input string */
 };
 
 /**

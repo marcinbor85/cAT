@@ -67,13 +67,27 @@ static void reset_state(struct cat_object *self)
 
         self->state = CAT_STATE_PARSE_PREFIX;
         self->prefix_state = CAT_PREFIX_STATE_WAIT_A;
+        self->cr_flag = false;
+}
+
+static void print_new_line(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        if (self->cr_flag != false) {
+                print_string(self->iface, "\r\n");
+        } else {
+                print_string(self->iface, "\n");
+        }
 }
 
 static void ack_error(struct cat_object *self)
 {
         assert(self != NULL);
 
-        print_string(self->iface, "\nERROR\n");
+        print_new_line(self);
+        print_string(self->iface, "ERROR");
+        print_new_line(self);
         reset_state(self);
 }
 
@@ -81,7 +95,9 @@ static void ack_ok(struct cat_object *self)
 {
         assert(self != NULL);
 
-        print_string(self->iface, "\nOK\n");
+        print_new_line(self);
+        print_string(self->iface, "OK");
+        print_new_line(self);
         reset_state(self);
 }
 
@@ -131,6 +147,9 @@ static int error_state(struct cat_object *self)
         switch (self->current_char) {
         case '\n':
                 ack_error(self);
+                break;
+        case '\r':
+                self->cr_flag = true;
                 break;
         default:
                 break;
@@ -185,6 +204,7 @@ static int parse_prefix(struct cat_object *self)
                         ack_error(self);
                         break;
                 case '\r':
+                        self->cr_flag = true;
                         break;
                 default:
                         self->state = CAT_STATE_ERROR;
@@ -242,6 +262,7 @@ static int parse_command(struct cat_object *self)
                 ack_ok(self);
                 break;
         case '\r':
+                self->cr_flag = true;
                 break;
         case '?':
                 if (self->length == 0) {
@@ -338,6 +359,7 @@ static int wait_acknowledge(struct cat_object *self)
                 self->state = CAT_STATE_SEARCH_COMMAND;
                 break;
         case '\r':
+                self->cr_flag = true;
                 break;
         default:
                 self->state = CAT_STATE_ERROR;
@@ -413,11 +435,11 @@ static int command_found(struct cat_object *self)
                         ack_error(self);
                         break;
                 }
-                print_string(self->iface, "\n");
+                print_new_line(self);
                 print_string(self->iface, self->cmd->name);
                 print_string(self->iface, "=");
                 print_binary(self->iface, self->desc->buf, size);
-                print_string(self->iface, "\n");
+                print_new_line(self);
 
                 ack_ok(self);
                 break;
@@ -1019,11 +1041,11 @@ static int parse_read_args(struct cat_object *self)
                 return -1;
         }
 
-        print_string(self->iface, "\n");
+        print_new_line(self);
         print_string(self->iface, self->cmd->name);
         print_string(self->iface, "=");
         print_binary(self->iface, self->desc->buf, size);
-        print_string(self->iface, "\n");
+        print_new_line(self);
 
         ack_ok(self);
         return 1;
@@ -1056,6 +1078,7 @@ static int parse_command_args(struct cat_object *self)
                 ack_ok(self);
                 break;
         case '\r':
+                self->cr_flag = true;
                 break;
         default:
                 if (self->length >= self->desc->buf_size) {

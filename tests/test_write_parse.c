@@ -172,7 +172,7 @@ static void prepare_input(const char *text)
         memset(write_results, 0, sizeof(write_results));
 }
 
-static const char test_case_1[] = "\nAT+SET=-10,-20,-30\nAT+SET1=-10,-20,-30\nAT+SET1=-1\n";
+static const char test_case_1[] = "\nAT+SET=-10,-20,-30\r\nAT+SET1=-10,-20,-30\r\nAT+SET1=-1\r\n";
 static const char test_case_2[] = "\nAT+SET3=-1,-2,-3,0\nAT+SET3=-1,-2,-3\nAT+SET3=-100\n";
 static const char test_case_3[] = "\nAT+SETALL=-11,-22,-33\nAT+SETALL=-1,-2,-3\nAT+SETALL=100\n";
 
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\r\nERROR\r\n\r\nOK\r\n\r\nOK\r\n") == 0);
         assert(strcmp(write_results, " CMD1_3:-10,-20,-30 CMD1_1:-1") == 0);
 
         assert(var1 == -1);
