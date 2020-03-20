@@ -170,7 +170,7 @@ static void prepare_parse_command(struct cat_object *self)
 
         self->index = 0;
         self->length = 0;
-        self->cmd_type = CAT_CMD_TYPE_EXECUTE;
+        self->cmd_type = CAT_CMD_TYPE_RUN;
 }
 
 static int parse_prefix(struct cat_object *self)
@@ -270,7 +270,7 @@ static int parse_command(struct cat_object *self)
                         break;
                 }
                 self->cmd_type = CAT_CMD_TYPE_READ;
-                self->state = CAT_STATE_WAIT_ACKNOWLEDGE;
+                self->state = CAT_STATE_WAIT_READ_ACKNOWLEDGE;
                 break;
         case '=':
                 if (self->length == 0) {
@@ -346,7 +346,7 @@ static int update_command(struct cat_object *self)
         return 1;
 }
 
-static int wait_acknowledge(struct cat_object *self)
+static int wait_read_acknowledge(struct cat_object *self)
 {
         assert(self != NULL);
 
@@ -357,6 +357,46 @@ static int wait_acknowledge(struct cat_object *self)
         case '\n':
                 prepare_search_command(self);
                 self->state = CAT_STATE_SEARCH_COMMAND;
+                break;
+        case '\r':
+                self->cr_flag = true;
+                break;
+        default:
+                self->state = CAT_STATE_ERROR;
+                break;
+        }
+        return 1;
+}
+
+static int wait_test_acknowledge(struct cat_object *self)
+{
+        size_t size;
+
+        assert(self != NULL);
+
+        if (read_cmd_char(self) == 0)
+                return 0;
+
+        switch (self->current_char) {
+        case '\n':
+                if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
+                        self->state = CAT_STATE_PARSE_TEST_ARGS;
+                        self->position = 0;
+                        self->index = 0;
+                        self->var = &self->cmd->var[self->index];
+                        break;
+                }
+                if (self->cmd->test(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0) {
+                        ack_error(self);
+                        break;
+                }
+                print_new_line(self);
+                print_string(self->iface, self->cmd->name);
+                print_string(self->iface, "=");
+                print_binary(self->iface, self->desc->buf, size);
+                print_new_line(self);
+
+                ack_ok(self);
                 break;
         case '\r':
                 self->cr_flag = true;
@@ -406,7 +446,7 @@ static int command_found(struct cat_object *self)
         assert(self != NULL);
 
         switch (self->cmd_type) {
-        case CAT_CMD_TYPE_EXECUTE:
+        case CAT_CMD_TYPE_RUN:
                 if (self->cmd->run == NULL) {
                         ack_error(self);
                         break;
@@ -447,6 +487,9 @@ static int command_found(struct cat_object *self)
                 self->length = 0;
                 self->desc->buf[0] = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_ARGS;
+                break;
+        default:
+                ack_error(self);
                 break;
         }
 
@@ -1051,6 +1094,68 @@ static int parse_read_args(struct cat_object *self)
         return 1;
 }
 
+static int parse_test_args(struct cat_object *self)
+{
+        size_t size;
+        int stat;
+
+        assert(self != NULL);
+
+        if ((self->var->read != NULL) && (self->var->read(self->var) != 0)) {
+                ack_error(self);
+                return -1;
+        }
+        
+        switch (self->var->type) {
+        case CAT_VAR_INT_DEC:
+                stat = format_int_decimal(self);    
+                break;
+        case CAT_VAR_UINT_DEC:                
+                stat = format_uint_decimal(self);
+                break;
+        case CAT_VAR_NUM_HEX:                
+                stat = format_num_hexadecimal(self);
+                break;
+        case CAT_VAR_BUF_HEX:   
+                stat = format_buffer_hexadecimal(self);     
+                break;
+        case CAT_VAR_BUF_STRING:
+                stat = format_buffer_string(self);          
+                break;
+        }
+
+        if (stat < 0) {
+                ack_error(self);
+                return -1;
+        }        
+
+        if (++self->index < self->cmd->var_num) {
+                if (self->position >= self->desc->buf_size) {
+                        ack_error(self);
+                        return -1;
+                }
+                self->desc->buf[self->position++] = ',';
+                self->var = &self->cmd->var[self->index];
+                return 1;
+        }
+
+        size = self->position;
+
+        if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &size, self->desc->buf_size) != 0)) {
+                ack_error(self);
+                return -1;
+        }
+
+        print_new_line(self);
+        print_string(self->iface, self->cmd->name);
+        print_string(self->iface, "=");
+        print_binary(self->iface, self->desc->buf, size);
+        print_new_line(self);
+
+        ack_ok(self);
+        return 1;
+}
+
 static int parse_command_args(struct cat_object *self)
 {
         assert(self != NULL);
@@ -1081,6 +1186,12 @@ static int parse_command_args(struct cat_object *self)
                 self->cr_flag = true;
                 break;
         default:
+                if ((self->length == 0) && (self->current_char == '?') && (self->cmd->test != NULL)) {
+                        self->cmd_type = CAT_CMD_TYPE_TEST;
+                        self->state = CAT_STATE_WAIT_TEST_ACKNOWLEDGE;
+                        break;
+                }
+
                 if (self->length >= self->desc->buf_size) {
                         self->state = CAT_STATE_ERROR;
                         break;
@@ -1109,8 +1220,8 @@ int cat_service(struct cat_object *self)
                 return parse_command(self);
         case CAT_STATE_UPDATE_COMMAND_STATE:
                 return update_command(self);
-        case CAT_STATE_WAIT_ACKNOWLEDGE:
-                return wait_acknowledge(self);
+        case CAT_STATE_WAIT_READ_ACKNOWLEDGE:
+                return wait_read_acknowledge(self);
         case CAT_STATE_SEARCH_COMMAND:
                 return search_command(self);
         case CAT_STATE_COMMAND_FOUND:
@@ -1123,6 +1234,10 @@ int cat_service(struct cat_object *self)
                 return parse_write_args(self);
         case CAT_STATE_PARSE_READ_ARGS:
                 return parse_read_args(self);
+        case CAT_STATE_WAIT_TEST_ACKNOWLEDGE:
+                return wait_test_acknowledge(self);
+        case CAT_STATE_PARSE_TEST_ARGS:
+                return parse_test_args(self);
         default:
                 break;
         }

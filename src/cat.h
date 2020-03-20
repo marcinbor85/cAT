@@ -66,6 +66,8 @@ typedef int (*cat_cmd_write_handler)(const struct cat_command *cmd, const uint8_
 typedef int (*cat_cmd_read_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
 /* run command function handler */
 typedef int (*cat_cmd_run_handler)(const struct cat_command *cmd);
+/* test command function handler */
+typedef int (*cat_cmd_test_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
 
 /* enum type with main at parser fsm state */
 typedef enum {
@@ -73,13 +75,15 @@ typedef enum {
         CAT_STATE_PARSE_PREFIX,
         CAT_STATE_PARSE_COMMAND_CHAR,
         CAT_STATE_UPDATE_COMMAND_STATE,
-        CAT_STATE_WAIT_ACKNOWLEDGE,
+        CAT_STATE_WAIT_READ_ACKNOWLEDGE,
         CAT_STATE_SEARCH_COMMAND,
         CAT_STATE_COMMAND_FOUND,
         CAT_STATE_COMMAND_NOT_FOUND,
         CAT_STATE_PARSE_COMMAND_ARGS,
         CAT_STATE_PARSE_WRITE_ARGS,
-        CAT_STATE_PARSE_READ_ARGS 
+        CAT_STATE_PARSE_READ_ARGS,
+        CAT_STATE_WAIT_TEST_ACKNOWLEDGE,
+        CAT_STATE_PARSE_TEST_ARGS
 } cat_state;
 
 /* enum type with prefix parser fsm state */
@@ -90,9 +94,10 @@ typedef enum {
 
 /* enum type with type of command request */
 typedef enum {
-        CAT_CMD_TYPE_EXECUTE = 0,
+        CAT_CMD_TYPE_RUN = 0,
         CAT_CMD_TYPE_READ,
-        CAT_CMD_TYPE_WRITE
+        CAT_CMD_TYPE_WRITE,
+        CAT_CMD_TYPE_TEST
 } cat_cmd_type;
 
 /* structure with io interface functions */
@@ -108,6 +113,7 @@ struct cat_command {
 	cat_cmd_write_handler write; /* write command handler */
 	cat_cmd_read_handler read; /* read command handler */
 	cat_cmd_run_handler run; /* run command handler */
+        cat_cmd_test_handler test; /* test command handler */
 
         struct cat_variable const *var; /* pointer to array of variables assiocated with this command */
         size_t var_num; /* number of variables in array */
