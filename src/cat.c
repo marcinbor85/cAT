@@ -70,15 +70,17 @@ static void reset_state(struct cat_object *self)
         self->cr_flag = false;
 }
 
+static const char *get_new_line_chars(struct cat_object *self)
+{
+        static const char *crlf = "\r\n";
+        return &crlf[(self->cr_flag != false) ? 0 : 1];
+}
+
 static void print_new_line(struct cat_object *self)
 {
         assert(self != NULL);
 
-        if (self->cr_flag != false) {
-                print_string(self->iface, "\r\n");
-        } else {
-                print_string(self->iface, "\n");
-        }
+        print_string(self->iface, get_new_line_chars(self));
 }
 
 static void print_line(struct cat_object *self, const char *buf)
@@ -400,6 +402,9 @@ static int wait_test_acknowledge(struct cat_object *self)
                         self->var = &self->cmd->var[self->index];
                         break;
                 }
+
+
+
                 if (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
                         ack_error(self);
                         break;
@@ -1110,7 +1115,6 @@ static int format_info_type(struct cat_object *self)
         if (print_string_to_buf(self, ">") != 0)
                 return -1;
 
-
         return 0;
 }
 
@@ -1185,6 +1189,17 @@ static int parse_test_args(struct cat_object *self)
                 self->desc->buf[self->position++] = ',';
                 self->var = &self->cmd->var[self->index];
                 return 1;
+        }
+
+        if (self->cmd->description != NULL) {
+                if (print_string_to_buf(self, get_new_line_chars(self)) != 0) {
+                        ack_error(self);
+                        return -1;
+                }
+                if (print_string_to_buf(self, self->cmd->description) != 0) {
+                        ack_error(self);
+                        return -1;
+                }
         }
 
         if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0)) {

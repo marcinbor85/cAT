@@ -184,6 +184,7 @@ struct cat_io_interface {
 /* structure with at command descriptor */
 struct cat_command {
 	const char *name; /* at command name (case-insensitivity) */
+        const char *description; /* at command description (optionally - can be null - used only if vars have been defined) */
 
 	cat_cmd_write_handler write; /* write command handler */
 	cat_cmd_read_handler read; /* read command handler */

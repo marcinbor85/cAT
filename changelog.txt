@@ -1,3 +1,6 @@
+0.5.1
+* description field in command added (used in auto help message)
+
 0.5.0
 * test command parser with auto help messages
 * output string end-line encoding same as input string

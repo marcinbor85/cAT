@@ -37,6 +37,7 @@ sudo make install
 ```console
 at+print=?                                      # TEST command
 +PRINT=<X:UINT8>,<Y:UINT8>,<MESSAGE:STRING>     # Automatic response
+Printing something special at (X,Y).            # Automatic response
 OK                                              # Automatic acknowledge
 
 at+print?                                       # READ command
