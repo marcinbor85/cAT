@@ -79,6 +79,7 @@ static struct cat_variable print_vars[] = {
 static struct cat_command cmds[] = {
         {
                 .name = "+PRINT",
+                .description = "Printing something special at (X,Y).",
                 .run = print_run,
                 .var = print_vars,
                 .var_num = sizeof(print_vars) / sizeof(print_vars[0]),
