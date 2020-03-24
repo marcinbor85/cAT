@@ -119,6 +119,21 @@ static void print_buffer(struct cat_object *self)
         print_new_line(self);
 }
 
+static int print_string_to_buf(struct cat_object *self, const char *str)
+{
+        int written;
+        size_t len;
+        
+        len = self->desc->buf_size - self->position;
+        written = snprintf((char*)&self->desc->buf[self->position], len, "%s", str);
+        
+        if ((written < 0) || ((size_t)written >= len))
+                return -1;
+
+        self->position += written;
+        return 0;
+}
+
 static int read_cmd_char(struct cat_object *self)
 {
         assert(self != NULL);
@@ -263,6 +278,24 @@ static uint8_t convert_hex_char_to_value(const char ch)
         return ((ch >= '0') && (ch <= '9')) ? (uint8_t)(ch - '0') : (uint8_t)(ch - 'A' + 10U);
 }
 
+static int print_response_test(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        if (self->cmd->description != NULL) {
+                if (print_string_to_buf(self, get_new_line_chars(self)) != 0)
+                        return -1;
+                if (print_string_to_buf(self, self->cmd->description) != 0)
+                        return -1;
+        }
+
+        if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0))
+                return -1;
+
+        print_buffer(self);
+        return 0;
+}
+
 static int parse_command(struct cat_object *self)
 {
         assert(self != NULL);
@@ -403,13 +436,10 @@ static int wait_test_acknowledge(struct cat_object *self)
                         break;
                 }
 
-
-
-                if (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
+                if (print_response_test(self) != 0) {
                         ack_error(self);
                         break;
                 }
-                print_buffer(self);
 
                 ack_ok(self);
                 break;
@@ -985,21 +1015,6 @@ static int format_buffer_hexadecimal(struct cat_object *self)
         return 0;
 }
 
-static int print_string_to_buf(struct cat_object *self, const char *str)
-{
-        int written;
-        size_t len;
-        
-        len = self->desc->buf_size - self->position;
-        written = snprintf((char*)&self->desc->buf[self->position], len, "%s", str);
-        
-        if ((written < 0) || ((size_t)written >= len))
-                return -1;
-
-        self->position += written;
-        return 0;
-}
-
 static int format_buffer_string(struct cat_object *self)
 {
         size_t i = 0;
@@ -1191,22 +1206,10 @@ static int parse_test_args(struct cat_object *self)
                 return 1;
         }
 
-        if (self->cmd->description != NULL) {
-                if (print_string_to_buf(self, get_new_line_chars(self)) != 0) {
-                        ack_error(self);
-                        return -1;
-                }
-                if (print_string_to_buf(self, self->cmd->description) != 0) {
-                        ack_error(self);
-                        return -1;
-                }
-        }
-
-        if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0)) {
+        if (print_response_test(self) != 0) {
                 ack_error(self);
                 return -1;
         }
-        print_buffer(self);
 
         ack_ok(self);
         return 1;
