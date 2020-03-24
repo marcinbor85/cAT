@@ -1,3 +1,6 @@
+0.5.2
+* small fix in auto description response
+
 0.5.1
 * description field in command added (used in auto help message)
 

@@ -67,6 +67,13 @@ static int cmd_ok_test(const struct cat_command *cmd, uint8_t *data, size_t *dat
         return 0;
 }
 
+static int cmd_ok2_test(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
+{
+        strcat(data, "test2");
+        *data_size = strlen(data);
+        return 0;
+}
+
 static struct cat_variable vars[] = {
         {
                 .type = CAT_VAR_INT_DEC,
@@ -174,6 +181,11 @@ static struct cat_command cmds[] = {
                 .name = "+ZZ2",
                 .description = "zz2_desc",
                 .test = cmd_ok_test,
+        },
+        {
+                .name = "+ZZ3",
+                .description = "zz3_desc",
+                .test = cmd_ok2_test,
         }
 };
 
@@ -239,7 +251,8 @@ static void prepare_input(const char *text)
 }
 
 static const char test_case_1[] = "\nAT+SET=?\n";
-static const char test_case_2[] = "\nAT+TEST=?\nAT+TEST2=?\r\nAT+AP=?\nAT+ZZ=?\nAT+ZZ2=?\n";
+static const char test_case_2[] = "\nAT+TEST=?\nAT+TEST2=?\r\nAT+AP=?\n";
+static const char test_case_3[] = "\nAT+ZZ=?\nAT+ZZ2=?\nAT+ZZ3=?\r\n";
 
 int main(int argc, char **argv)
 {
@@ -255,7 +268,14 @@ int main(int argc, char **argv)
         prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+TEST=<var:INT8>\ntest_desc\ntest\n\nOK\n\r\n+TEST2=<var:INT8>\r\ntest2_desc\r\n\r\nOK\r\n\nERROR\n\n+ZZ=test1\n\nOK\n\n+ZZ2=test1\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\n+TEST=<var:INT8>\ntest_desc\ntest\n\nOK\n\r\n+TEST2=<var:INT8>\r\ntest2_desc\r\n\r\nOK\r\n\nERROR\n") == 0);
+
+        prepare_input(test_case_3);
+        while (cat_service(&at) != 0) {};
+
+        printf("%s\n", ack_results);
+
+        assert(strcmp(ack_results, "\n+ZZ=test1\n\nOK\n\n+ZZ2=test1\n\nOK\n\r\n+ZZ3=\r\nzz3_desctest2\r\n\r\nOK\r\n") == 0);
 
 	return 0;
 }
