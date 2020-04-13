@@ -27,9 +27,9 @@ SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-#define CAT_CMD_STATE_NOT_MATCH          (0)
-#define CAT_CMD_STATE_PARTIAL_MATCH      (1U)
-#define CAT_CMD_STATE_FULL_MATCH         (2U)
+#define CAT_CMD_STATE_NOT_MATCH (0)
+#define CAT_CMD_STATE_PARTIAL_MATCH (1U)
+#define CAT_CMD_STATE_FULL_MATCH (2U)
 
 static char to_upper(char ch)
 {
@@ -42,7 +42,8 @@ static void print_string(const struct cat_io_interface *io, const char *str)
         assert(str != NULL);
 
         while (*str != 0) {
-                while (io->write(*str) != 1) {};
+                while (io->write(*str) != 1) {
+                };
                 str++;
         }
 }
@@ -56,7 +57,8 @@ static void print_binary(const struct cat_io_interface *io, const uint8_t *data,
 
         i = 0;
         while (size-- > 0) {
-                while (io->write(data[i]) != 1) {};
+                while (io->write(data[i]) != 1) {
+                };
                 i++;
         }
 }
@@ -87,7 +89,7 @@ cat_status cat_is_busy(struct cat_object *self)
         } else {
                 s = CAT_STATUS_OK;
         }
-        
+
         if (self->mutex != NULL) {
                 if (self->mutex->unlock() != 0) {
                         return CAT_STATUS_ERROR_MUTEX_UNLOCK;
@@ -150,10 +152,10 @@ static int print_string_to_buf(struct cat_object *self, const char *str)
 {
         int written;
         size_t len;
-        
+
         len = self->desc->buf_size - self->position;
-        written = snprintf((char*)&self->desc->buf[self->position], len, "%s", str);
-        
+        written = snprintf((char *)&self->desc->buf[self->position], len, "%s", str);
+
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
 
@@ -167,7 +169,7 @@ static int read_cmd_char(struct cat_object *self)
 
         if (self->io->read(&self->current_char) == 0)
                 return 0;
-        
+
         if (self->state != CAT_STATE_PARSE_COMMAND_ARGS)
                 self->current_char = to_upper(self->current_char);
 
@@ -187,14 +189,14 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
 
         assert(desc->buf != NULL);
         assert(desc->buf_size * 4U >= desc->cmd_num);
-        
+
         self->desc = desc;
         self->io = io;
         self->mutex = mutex;
 
         for (i = 0; i < self->desc->cmd_num; i++)
                 assert(self->desc->cmd[i].name != NULL);
-                
+
         reset_state(self);
 }
 
@@ -220,10 +222,8 @@ static cat_status error_state(struct cat_object *self)
 
 static void prepare_parse_command(struct cat_object *self)
 {
-        uint8_t val = (CAT_CMD_STATE_PARTIAL_MATCH << 0) |
-                (CAT_CMD_STATE_PARTIAL_MATCH << 2) |
-                (CAT_CMD_STATE_PARTIAL_MATCH << 4) |
-                (CAT_CMD_STATE_PARTIAL_MATCH << 6);
+        uint8_t val = (CAT_CMD_STATE_PARTIAL_MATCH << 0) | (CAT_CMD_STATE_PARTIAL_MATCH << 2) | (CAT_CMD_STATE_PARTIAL_MATCH << 4) |
+                      (CAT_CMD_STATE_PARTIAL_MATCH << 6);
 
         assert(self != NULL);
 
@@ -282,7 +282,7 @@ static void prepare_search_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        self->index = 0;        
+        self->index = 0;
         self->cmd = NULL;
 }
 
@@ -525,7 +525,7 @@ static cat_status command_found(struct cat_object *self)
 
                 if (self->cmd->run(self->cmd) != 0) {
                         ack_error(self);
-                        break;    
+                        break;
                 }
 
                 ack_ok(self);
@@ -560,7 +560,7 @@ static cat_status command_found(struct cat_object *self)
                 break;
         }
 
-        return CAT_STATUS_BUSY;       
+        return CAT_STATUS_BUSY;
 }
 
 static cat_status command_not_found(struct cat_object *self)
@@ -705,17 +705,17 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
 
                 if (is_valid_hex_char(ch) == 0)
                         return -1;
-                
+
                 byte <<= 4;
                 byte += convert_hex_char_to_value(ch);
 
                 if (state != 0) {
                         if (size >= self->var->data_size)
                                 return -1;
-                        ((uint8_t*)(self->var->data))[size++] = byte;
+                        ((uint8_t *)(self->var->data))[size++] = byte;
                         byte = 0;
                 }
-                
+
                 state = !state;
         }
 
@@ -732,12 +732,12 @@ static int parse_buffer_string(struct cat_object *self)
 
         while (1) {
                 ch = self->desc->buf[self->position++];
-                
+
                 switch (state) {
                 case 0:
                         if (ch != '"')
                                 return -1;
-                        state = 1;              
+                        state = 1;
                         break;
                 case 1:
                         if (ch == 0)
@@ -751,8 +751,8 @@ static int parse_buffer_string(struct cat_object *self)
                                 break;
                         }
                         if (size >= self->var->data_size)
-                                return -1;                                
-                        ((uint8_t*)(self->var->data))[size++] = ch;
+                                return -1;
+                        ((uint8_t *)(self->var->data))[size++] = ch;
                         break;
                 case 2:
                         switch (ch) {
@@ -769,15 +769,15 @@ static int parse_buffer_string(struct cat_object *self)
                                 return -1;
                         }
                         if (size >= self->var->data_size)
-                                return -1;                                
-                        ((uint8_t*)(self->var->data))[size++] = ch;
+                                return -1;
+                        ((uint8_t *)(self->var->data))[size++] = ch;
                         state = 1;
                         break;
                 case 3:
                         if ((ch == 0) || (ch == ',')) {
                                 if (size >= self->var->data_size)
                                         return -1;
-                                ((uint8_t*)(self->var->data))[size] = 0;
+                                ((uint8_t *)(self->var->data))[size] = 0;
                                 self->write_size = size;
                                 return (ch == ',') ? 1 : 0;
                         } else {
@@ -796,17 +796,17 @@ static int validate_int_range(struct cat_object *self, int64_t val)
         case 1:
                 if ((val < INT8_MIN) || (val > INT8_MAX))
                         return -1;
-                *(int8_t*)(self->var->data) = val;
+                *(int8_t *)(self->var->data) = val;
                 break;
         case 2:
                 if ((val < INT16_MIN) || (val > INT16_MAX))
                         return -1;
-                *(int16_t*)(self->var->data) = val;
+                *(int16_t *)(self->var->data) = val;
                 break;
         case 4:
                 if ((val < INT32_MIN) || (val > INT32_MAX))
                         return -1;
-                *(int32_t*)(self->var->data) = val;
+                *(int32_t *)(self->var->data) = val;
                 break;
         default:
                 return -1;
@@ -821,17 +821,17 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
         case 1:
                 if (val > UINT8_MAX)
                         return -1;
-                *(uint8_t*)(self->var->data) = val;
+                *(uint8_t *)(self->var->data) = val;
                 break;
         case 2:
                 if (val > UINT16_MAX)
                         return -1;
-                *(uint16_t*)(self->var->data) = val;
+                *(uint16_t *)(self->var->data) = val;
                 break;
         case 4:
                 if (val > UINT32_MAX)
                         return -1;
-                *(uint32_t*)(self->var->data) = val;
+                *(uint32_t *)(self->var->data) = val;
                 break;
         default:
                 return -1;
@@ -860,7 +860,7 @@ static cat_status parse_write_args(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_UINT_DEC:
-                stat = parse_uint_decimal(self, (uint64_t*)&val);
+                stat = parse_uint_decimal(self, (uint64_t *)&val);
                 if (stat < 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
@@ -871,7 +871,7 @@ static cat_status parse_write_args(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_NUM_HEX:
-                stat = parse_num_hexadecimal(self, (uint64_t*)&val);
+                stat = parse_num_hexadecimal(self, (uint64_t *)&val);
                 if (stat < 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
@@ -935,10 +935,10 @@ static int print_format_num(struct cat_object *self, char *fmt, uint32_t val)
 {
         int written;
         size_t len;
-        
+
         len = self->desc->buf_size - self->position;
-        written = snprintf((char*)&self->desc->buf[self->position], len, fmt, val);
-        
+        written = snprintf((char *)&self->desc->buf[self->position], len, fmt, val);
+
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
 
@@ -954,13 +954,13 @@ static int format_int_decimal(struct cat_object *self)
 
         switch (self->var->data_size) {
         case 1:
-                val = *(int8_t*)self->var->data;
+                val = *(int8_t *)self->var->data;
                 break;
         case 2:
-                val = *(int16_t*)self->var->data;
+                val = *(int16_t *)self->var->data;
                 break;
         case 4:
-                val = *(int32_t*)self->var->data;
+                val = *(int32_t *)self->var->data;
                 break;
         default:
                 return -1;
@@ -980,13 +980,13 @@ static int format_uint_decimal(struct cat_object *self)
 
         switch (self->var->data_size) {
         case 1:
-                val = *(uint8_t*)self->var->data;
+                val = *(uint8_t *)self->var->data;
                 break;
         case 2:
-                val = *(uint16_t*)self->var->data;
+                val = *(uint16_t *)self->var->data;
                 break;
         case 4:
-                val = *(uint32_t*)self->var->data;
+                val = *(uint32_t *)self->var->data;
                 break;
         default:
                 return -1;
@@ -1007,15 +1007,15 @@ static int format_num_hexadecimal(struct cat_object *self)
 
         switch (self->var->data_size) {
         case 1:
-                val = *(uint8_t*)self->var->data;
+                val = *(uint8_t *)self->var->data;
                 strcpy(fstr, "0x%02X");
                 break;
         case 2:
-                val = *(uint16_t*)self->var->data;
+                val = *(uint16_t *)self->var->data;
                 strcpy(fstr, "0x%04X");
                 break;
         case 4:
-                val = *(uint32_t*)self->var->data;
+                val = *(uint32_t *)self->var->data;
                 strcpy(fstr, "0x%08X");
                 break;
         default:
@@ -1106,7 +1106,7 @@ static int format_info_type(struct cat_object *self)
                         return -1;
                 }
                 break;
-        case CAT_VAR_UINT_DEC:                
+        case CAT_VAR_UINT_DEC:
                 switch (self->var->data_size) {
                 case 1:
                         strcpy(var_type, "UINT8");
@@ -1121,7 +1121,7 @@ static int format_info_type(struct cat_object *self)
                         return -1;
                 }
                 break;
-        case CAT_VAR_NUM_HEX:                
+        case CAT_VAR_NUM_HEX:
                 switch (self->var->data_size) {
                 case 1:
                         strcpy(var_type, "HEX8");
@@ -1137,7 +1137,7 @@ static int format_info_type(struct cat_object *self)
                 }
                 break;
                 break;
-        case CAT_VAR_BUF_HEX:   
+        case CAT_VAR_BUF_HEX:
                 strcpy(var_type, "HEXBUF");
                 break;
         case CAT_VAR_BUF_STRING:
@@ -1171,29 +1171,29 @@ static cat_status parse_read_args(struct cat_object *self)
                 ack_error(self);
                 return CAT_STATUS_BUSY;
         }
-        
+
         switch (self->var->type) {
         case CAT_VAR_INT_DEC:
-                stat = format_int_decimal(self);    
+                stat = format_int_decimal(self);
                 break;
-        case CAT_VAR_UINT_DEC:                
+        case CAT_VAR_UINT_DEC:
                 stat = format_uint_decimal(self);
                 break;
-        case CAT_VAR_NUM_HEX:                
+        case CAT_VAR_NUM_HEX:
                 stat = format_num_hexadecimal(self);
                 break;
-        case CAT_VAR_BUF_HEX:   
-                stat = format_buffer_hexadecimal(self);     
+        case CAT_VAR_BUF_HEX:
+                stat = format_buffer_hexadecimal(self);
                 break;
         case CAT_VAR_BUF_STRING:
-                stat = format_buffer_string(self);          
+                stat = format_buffer_string(self);
                 break;
         }
 
         if (stat < 0) {
                 ack_error(self);
                 return CAT_STATUS_BUSY;
-        }        
+        }
 
         if (++self->index < self->cmd->var_num) {
                 if (self->position >= self->desc->buf_size) {

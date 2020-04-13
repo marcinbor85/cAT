@@ -186,8 +186,8 @@ typedef enum {
 
 /* structure with io interface functions */
 struct cat_io_interface {
-	int (*write)(char ch); /* write char to output stream. return 1 if byte wrote successfully. */
-	int (*read)(char *ch); /* read char from input stream. return 1 if byte read successfully. */
+        int (*write)(char ch); /* write char to output stream. return 1 if byte wrote successfully. */
+        int (*read)(char *ch); /* read char from input stream. return 1 if byte read successfully. */
 };
 
 /* structure with mutex interface functions */
@@ -198,12 +198,12 @@ struct cat_mutex_interface {
 
 /* structure with at command descriptor */
 struct cat_command {
-	const char *name; /* at command name (case-insensitivity) */
+        const char *name; /* at command name (case-insensitivity) */
         const char *description; /* at command description (optionally - can be null) */
 
-	cat_cmd_write_handler write; /* write command handler */
-	cat_cmd_read_handler read; /* read command handler */
-	cat_cmd_run_handler run; /* run command handler */
+        cat_cmd_write_handler write; /* write command handler */
+        cat_cmd_read_handler read; /* read command handler */
+        cat_cmd_run_handler run; /* run command handler */
         cat_cmd_test_handler test; /* test command handler */
 
         struct cat_variable const *var; /* pointer to array of variables assiocated with this command */
@@ -213,8 +213,8 @@ struct cat_command {
 
 /* structure with at command parser descriptor */
 struct cat_descriptor {
-	struct cat_command const *cmd; /* pointer to array of commands descriptor */
-	size_t cmd_num; /* number of commands in array */
+        struct cat_command const *cmd; /* pointer to array of commands descriptor */
+        size_t cmd_num; /* number of commands in array */
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
@@ -222,8 +222,8 @@ struct cat_descriptor {
 
 /* structure with main at command parser object */
 struct cat_object {
-	struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
-	struct cat_io_interface const *io; /* pointer to at command parser io interface */
+        struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
+        struct cat_io_interface const *io; /* pointer to at command parser io interface */
         struct cat_mutex_interface const *mutex; /* pointer to at command parser mutex interface */
 
         size_t index; /* index used to iterate over commands and variables */
