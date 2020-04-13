@@ -130,5 +130,26 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\r\nERROR\r\n\nOK\n\nOK\n\r\nOK\r\n\nOK\n\nERROR\n\nERROR\n\r\nERROR\r\n\nERROR\n\nERROR\n\r\nERROR\r\n\r\nOK\r\n") == 0);
         assert(strcmp(run_results, " +TEST:+TEST A:A AP:AP +TEST:+TEST") == 0);
 
+        prepare_input("\nAT\n");
+        while (cat_service(&at) != 0) {};
+
+        assert(cat_is_busy(&at) == 0);
+        assert(strcmp(ack_results, "\nOK\n") == 0);
+        assert(strcmp(run_results, "") == 0);
+
+        prepare_input("\nAT+te");
+        while (cat_service(&at) != 0) {};
+
+        assert(cat_is_busy(&at) != 0);
+        assert(strcmp(ack_results, "") == 0);
+        assert(strcmp(run_results, "") == 0);
+
+        prepare_input("st\n");
+        while (cat_service(&at) != 0) {};
+
+        assert(cat_is_busy(&at) == 0);
+        assert(strcmp(ack_results, "\nOK\n") == 0);
+        assert(strcmp(run_results, " +TEST:+TEST") == 0);
+
 	return 0;
 }
