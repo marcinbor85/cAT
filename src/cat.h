@@ -248,6 +248,7 @@ struct cat_object {
  * @param self pointer to at command parser object to initialize
  * @param desc pointer to at command parser descriptor
  * @param io pointer to at command parser io low-level layer interface
+ * @param mutex pointer to at command partes mutex interface
  */
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex);
 
