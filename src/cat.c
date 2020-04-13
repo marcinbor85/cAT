@@ -72,12 +72,27 @@ static void reset_state(struct cat_object *self)
 
 int cat_is_busy(struct cat_object *self)
 {
-        if ((self->state != CAT_STATE_PARSE_PREFIX) ||
-                (self->prefix_state != CAT_PREFIX_STATE_WAIT_A) ||
-                (self->cr_flag != false))
-                return 1;
+        int s;
 
-        return 0;
+        if (self->mutex != NULL) {
+                if (self->mutex->lock() != 0) {
+                        return CAT_STATUS_ERROR_MUTEX_LOCK;
+                }
+        }
+
+        if ((self->state != CAT_STATE_PARSE_PREFIX) || (self->prefix_state != CAT_PREFIX_STATE_WAIT_A) || (self->cr_flag != false)) {
+                s = CAT_STATUS_BUSY;
+        } else {
+                s = CAT_STATUS_OK;
+        }
+        
+        if (self->mutex != NULL) {
+                if (self->mutex->unlock() != 0) {
+                        return CAT_STATUS_ERROR_MUTEX_UNLOCK;
+                }
+        }
+
+        return s;
 }
 
 static const char *get_new_line_chars(struct cat_object *self)
@@ -157,7 +172,7 @@ static int read_cmd_char(struct cat_object *self)
         return 1;
 }
 
-void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface)
+void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface, const struct cat_mutex_interface *mutex)
 {
         size_t i;
 
@@ -173,6 +188,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         
         self->desc = desc;
         self->iface = iface;
+        self->mutex = mutex;
 
         for (i = 0; i < self->desc->cmd_num; i++)
                 assert(self->desc->cmd[i].name != NULL);
@@ -1280,38 +1296,66 @@ static int parse_command_args(struct cat_object *self)
 
 int cat_service(struct cat_object *self)
 {
+        int s;
+
         assert(self != NULL);
+
+        if (self->mutex != NULL) {
+                if (self->mutex->lock() != 0) {
+                        return CAT_STATUS_ERROR_MUTEX_LOCK;
+                }
+        }
 
         switch (self->state) {
         case CAT_STATE_ERROR:
-                return error_state(self);
+                s = error_state(self);
+                break;
         case CAT_STATE_PARSE_PREFIX:
-                return parse_prefix(self);
+                s = parse_prefix(self);
+                break;
         case CAT_STATE_PARSE_COMMAND_CHAR:
-                return parse_command(self);
+                s = parse_command(self);
+                break;
         case CAT_STATE_UPDATE_COMMAND_STATE:
-                return update_command(self);
+                s = update_command(self);
+                break;
         case CAT_STATE_WAIT_READ_ACKNOWLEDGE:
-                return wait_read_acknowledge(self);
+                s = wait_read_acknowledge(self);
+                break;
         case CAT_STATE_SEARCH_COMMAND:
-                return search_command(self);
+                s = search_command(self);
+                break;
         case CAT_STATE_COMMAND_FOUND:
-                return command_found(self);
+                s = command_found(self);
+                break;
         case CAT_STATE_COMMAND_NOT_FOUND:
-                return command_not_found(self);
+                s = command_not_found(self);
+                break;
         case CAT_STATE_PARSE_COMMAND_ARGS:
-                return parse_command_args(self);
+                s = parse_command_args(self);
+                break;
         case CAT_STATE_PARSE_WRITE_ARGS:
-                return parse_write_args(self);
+                s = parse_write_args(self);
+                break;
         case CAT_STATE_PARSE_READ_ARGS:
-                return parse_read_args(self);
+                s = parse_read_args(self);
+                break;
         case CAT_STATE_WAIT_TEST_ACKNOWLEDGE:
-                return wait_test_acknowledge(self);
+                s = wait_test_acknowledge(self);
+                break;
         case CAT_STATE_PARSE_TEST_ARGS:
-                return parse_test_args(self);
+                s = parse_test_args(self);
+                break;
         default:
+                s = CAT_STATUS_ERROR_UNKNOWN_STATE;
                 break;
         }
 
-        return 1;
+        if (self->mutex != NULL) {
+                if (self->mutex->unlock() != 0) {
+                        return CAT_STATUS_ERROR_MUTEX_UNLOCK;
+                }
+        }
+
+        return s;
 }

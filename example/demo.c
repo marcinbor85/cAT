@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 {
 	struct cat_object at;
 
-	cat_init(&at, &desc, &iface);
+	cat_init(&at, &desc, &iface, NULL);
 
         while ((cat_service(&at) != 0) && (quit_flag == 0)) {};
 

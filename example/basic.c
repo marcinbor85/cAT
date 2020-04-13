@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 	struct cat_object at;
 
         /* initializing */
-	cat_init(&at, &desc, &iface);
+	cat_init(&at, &desc, &iface, NULL);
 
         /* main loop with exit code conditions */
         while ((cat_service(&at) != 0) && (quit_flag == 0)) {};

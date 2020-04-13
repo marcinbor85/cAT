@@ -158,7 +158,7 @@ Initialize AT command parser and run:
 ```c
 struct cat_object at; /* at command parser object */
 
-cat_init(&at, &desc, &iface); /* initialize at command parser object */
+cat_init(&at, &desc, &iface, NULL); /* initialize at command parser object */
 
 while (1) {
         cat_service(&at) /* periodically call at command parser service */

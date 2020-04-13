@@ -46,6 +46,15 @@ typedef enum {
         CAT_VAR_BUF_STRING /* string variable */
 } cat_var_type;
 
+/* enum type with function status */
+typedef enum {
+        CAT_STATUS_ERROR_UNKNOWN_STATE = 3,
+        CAT_STATUS_ERROR_MUTEX_LOCK = -2,
+        CAT_STATUS_ERROR_MUTEX_UNLOCK = -1,
+        CAT_STATUS_OK = 0,
+        CAT_STATUS_BUSY = 1
+} cat_status;
+
 /**
  * Write variable function handler
  * 
@@ -181,6 +190,12 @@ struct cat_io_interface {
 	int (*read)(char *ch); /* read char from input stream. return 1 if byte read successfully. */
 };
 
+/* structure with mutex interface functions */
+struct cat_mutex_interface {
+        int (*lock)(void); /* lock mutex handler. return 0 if successfully locked, otherwise - cannot lock */
+        int (*unlock)(void); /* unlock mutex handler. return 0 if successfully unlocked, otherwise - cannot unlock */
+};
+
 /* structure with at command descriptor */
 struct cat_command {
 	const char *name; /* at command name (case-insensitivity) */
@@ -209,6 +224,7 @@ struct cat_descriptor {
 struct cat_object {
 	struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
 	struct cat_io_interface const *iface; /* pointer to at command parser io interface */
+        struct cat_mutex_interface const *mutex; /* pointer to at command parser mutex interface */
 
         size_t index; /* index used to iterate over commands and variables */
         size_t length; /* length of input command name and command arguments */
@@ -233,7 +249,7 @@ struct cat_object {
  * @param desc pointer to at command parser descriptor
  * @param iface pointer to at command parser io low-level layer interface
  */
-void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface);
+void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface, const struct cat_mutex_interface *mutex);
 
 /**
  * Function must be called periodically to asynchronoulsy run at command parser.
@@ -242,7 +258,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
  * @param self pointer to at command parser object to initialize
  * @return 0 - nothing to do, waiting for input char, 1 - busy, parsing in progress.
  */
-int cat_service(struct cat_object *self);
+cat_status cat_service(struct cat_object *self);
 
 /**
  * Function return flag which indicating internal busy state.
@@ -252,7 +268,7 @@ int cat_service(struct cat_object *self);
  * If the function returns 0, then the external application modules can safely use the input / output interfaces functions shared with the library.
  * If the function returns 1, then input / output interface function are used by internal parser functions.
  */
-int cat_is_busy(struct cat_object *self);
+cat_status cat_is_busy(struct cat_object *self);
 
 #ifdef __cplusplus
 }

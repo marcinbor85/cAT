@@ -1,3 +1,10 @@
+TODO:
+- mutex descriptor interface
+- asynchronous unsolicited events (with triggers and queues and callback indicating message has been sent)
+- synchronous multiple responses (with triggers same trigger as above but status flag indicating end processing)
+- diffentation of variables for read and write commands
+- help command (printing all commands posibilities with descriptions)
+
 0.5.3
 * function for checking internal busy state added
 
