@@ -268,6 +268,9 @@ cat_status cat_service(struct cat_object *self);
  * If internal parser state is busy by doing some processing then function return 1.
  * If the function returns 0, then the external application modules can safely use the input / output interfaces functions shared with the library.
  * If the function returns 1, then input / output interface function are used by internal parser functions.
+ * 
+ * @param self pointer to at command parser object to initialize
+ * @return 0 - nothing to do, waiting for input char, 1 - busy, parsing in progress.
  */
 cat_status cat_is_busy(struct cat_object *self);
 
