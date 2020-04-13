@@ -36,27 +36,27 @@ static char to_upper(char ch)
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
 }
 
-static void print_string(const struct cat_io_interface *iface, const char *str)
+static void print_string(const struct cat_io_interface *io, const char *str)
 {
-        assert(iface != NULL);
+        assert(io != NULL);
         assert(str != NULL);
 
         while (*str != 0) {
-                while (iface->write(*str) != 1) {};
+                while (io->write(*str) != 1) {};
                 str++;
         }
 }
 
-static void print_binary(const struct cat_io_interface *iface, const uint8_t *data, size_t size)
+static void print_binary(const struct cat_io_interface *io, const uint8_t *data, size_t size)
 {
         size_t i;
 
-        assert(iface != NULL);
+        assert(io != NULL);
         assert(data != NULL);
 
         i = 0;
         while (size-- > 0) {
-                while (iface->write(data[i]) != 1) {};
+                while (io->write(data[i]) != 1) {};
                 i++;
         }
 }
@@ -73,6 +73,8 @@ static void reset_state(struct cat_object *self)
 cat_status cat_is_busy(struct cat_object *self)
 {
         int s;
+
+        assert(self != NULL);
 
         if (self->mutex != NULL) {
                 if (self->mutex->lock() != 0) {
@@ -105,7 +107,7 @@ static void print_new_line(struct cat_object *self)
 {
         assert(self != NULL);
 
-        print_string(self->iface, get_new_line_chars(self));
+        print_string(self->io, get_new_line_chars(self));
 }
 
 static void print_line(struct cat_object *self, const char *buf)
@@ -113,7 +115,7 @@ static void print_line(struct cat_object *self, const char *buf)
         assert(self != NULL);
 
         print_new_line(self);
-        print_string(self->iface, buf);
+        print_string(self->io, buf);
         print_new_line(self);
 }
 
@@ -138,9 +140,9 @@ static void print_buffer(struct cat_object *self)
         assert(self != NULL);
 
         print_new_line(self);
-        print_string(self->iface, self->cmd->name);
-        print_string(self->iface, "=");
-        print_binary(self->iface, self->desc->buf, self->position);
+        print_string(self->io, self->cmd->name);
+        print_string(self->io, "=");
+        print_binary(self->io, self->desc->buf, self->position);
         print_new_line(self);
 }
 
@@ -163,7 +165,7 @@ static int read_cmd_char(struct cat_object *self)
 {
         assert(self != NULL);
 
-        if (self->iface->read(&self->current_char) == 0)
+        if (self->io->read(&self->current_char) == 0)
                 return 0;
         
         if (self->state != CAT_STATE_PARSE_COMMAND_ARGS)
@@ -172,13 +174,13 @@ static int read_cmd_char(struct cat_object *self)
         return 1;
 }
 
-void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface, const struct cat_mutex_interface *mutex)
+void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex)
 {
         size_t i;
 
         assert(self != NULL);
         assert(desc != NULL);
-        assert(iface != NULL);
+        assert(io != NULL);
 
         assert(desc->cmd != NULL);
         assert(desc->cmd_num > 0);
@@ -187,7 +189,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         assert(desc->buf_size * 4U >= desc->cmd_num);
         
         self->desc = desc;
-        self->iface = iface;
+        self->io = io;
         self->mutex = mutex;
 
         for (i = 0; i < self->desc->cmd_num; i++)

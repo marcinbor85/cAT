@@ -223,7 +223,7 @@ struct cat_descriptor {
 /* structure with main at command parser object */
 struct cat_object {
 	struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
-	struct cat_io_interface const *iface; /* pointer to at command parser io interface */
+	struct cat_io_interface const *io; /* pointer to at command parser io interface */
         struct cat_mutex_interface const *mutex; /* pointer to at command parser mutex interface */
 
         size_t index; /* index used to iterate over commands and variables */
@@ -247,9 +247,9 @@ struct cat_object {
  * 
  * @param self pointer to at command parser object to initialize
  * @param desc pointer to at command parser descriptor
- * @param iface pointer to at command parser io low-level layer interface
+ * @param io pointer to at command parser io low-level layer interface
  */
-void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *iface, const struct cat_mutex_interface *mutex);
+void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex);
 
 /**
  * Function must be called periodically to asynchronoulsy run at command parser.
