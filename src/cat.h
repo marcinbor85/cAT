@@ -48,7 +48,7 @@ typedef enum {
 
 /* enum type with function status */
 typedef enum {
-        CAT_STATUS_ERROR_UNKNOWN_STATE = 3,
+        CAT_STATUS_ERROR_UNKNOWN_STATE = -3,
         CAT_STATUS_ERROR_MUTEX_LOCK = -2,
         CAT_STATUS_ERROR_MUTEX_UNLOCK = -1,
         CAT_STATUS_OK = 0,

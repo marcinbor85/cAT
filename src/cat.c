@@ -70,7 +70,7 @@ static void reset_state(struct cat_object *self)
         self->cr_flag = false;
 }
 
-int cat_is_busy(struct cat_object *self)
+cat_status cat_is_busy(struct cat_object *self)
 {
         int s;
 
@@ -196,12 +196,12 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         reset_state(self);
 }
 
-static int error_state(struct cat_object *self)
+static cat_status error_state(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return 0;
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -213,7 +213,7 @@ static int error_state(struct cat_object *self)
         default:
                 break;
         }
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
 static void prepare_parse_command(struct cat_object *self)
@@ -232,12 +232,12 @@ static void prepare_parse_command(struct cat_object *self)
         self->cmd_type = CAT_CMD_TYPE_RUN;
 }
 
-static int parse_prefix(struct cat_object *self)
+static cat_status parse_prefix(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return 0;
+                return CAT_STATUS_OK;
 
         switch (self->prefix_state) {
         case CAT_PREFIX_STATE_WAIT_A:
@@ -273,7 +273,7 @@ static int parse_prefix(struct cat_object *self)
         default:
                 break;
         }
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
 static void prepare_search_command(struct cat_object *self)
@@ -322,12 +322,12 @@ static int print_response_test(struct cat_object *self)
         return 0;
 }
 
-static int parse_command(struct cat_object *self)
+static cat_status parse_command(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return 0;
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -367,7 +367,7 @@ static int parse_command(struct cat_object *self)
                 self->state = CAT_STATE_ERROR;
                 break;
         }
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
 static uint8_t get_cmd_state(struct cat_object *self, size_t i)
@@ -396,7 +396,7 @@ static void set_cmd_state(struct cat_object *self, size_t i, uint8_t state)
         self->desc->buf[n] = s;
 }
 
-static int update_command(struct cat_object *self)
+static cat_status update_command(struct cat_object *self)
 {
         assert(self != NULL);
 
@@ -420,15 +420,15 @@ static int update_command(struct cat_object *self)
                 self->state = CAT_STATE_PARSE_COMMAND_CHAR;
         }
 
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-static int wait_read_acknowledge(struct cat_object *self)
+static cat_status wait_read_acknowledge(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return 0;
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -442,15 +442,15 @@ static int wait_read_acknowledge(struct cat_object *self)
                 self->state = CAT_STATE_ERROR;
                 break;
         }
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-static int wait_test_acknowledge(struct cat_object *self)
+static cat_status wait_test_acknowledge(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return 0;
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -476,10 +476,10 @@ static int wait_test_acknowledge(struct cat_object *self)
                 self->state = CAT_STATE_ERROR;
                 break;
         }
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-static int search_command(struct cat_object *self)
+static cat_status search_command(struct cat_object *self)
 {
         assert(self != NULL);
 
@@ -489,13 +489,13 @@ static int search_command(struct cat_object *self)
                 if (cmd_state == CAT_CMD_STATE_PARTIAL_MATCH) {
                         if (self->cmd != NULL) {
                                 self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
-                                return 1;
+                                return CAT_STATUS_BUSY;
                         }
                         self->cmd = &self->desc->cmd[self->index];
                 } else if (cmd_state == CAT_CMD_STATE_FULL_MATCH) {
                         self->cmd = &self->desc->cmd[self->index];
                         self->state = CAT_STATE_COMMAND_FOUND;
-                        return 1;
+                        return CAT_STATUS_BUSY;
                 }
         }
 
@@ -507,10 +507,10 @@ static int search_command(struct cat_object *self)
                 }
         }
 
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-static int command_found(struct cat_object *self)
+static cat_status command_found(struct cat_object *self)
 {
         assert(self != NULL);
 
@@ -558,15 +558,15 @@ static int command_found(struct cat_object *self)
                 break;
         }
 
-        return 1;       
+        return CAT_STATUS_BUSY;       
 }
 
-static int command_not_found(struct cat_object *self)
+static cat_status command_not_found(struct cat_object *self)
 {
         assert(self != NULL);
 
         ack_error(self);
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
 static int parse_int_decimal(struct cat_object *self, int64_t *ret)
@@ -838,7 +838,7 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
         return 0;
 }
 
-static int parse_write_args(struct cat_object *self)
+static cat_status parse_write_args(struct cat_object *self)
 {
         int64_t val;
         int stat;
@@ -850,83 +850,83 @@ static int parse_write_args(struct cat_object *self)
                 stat = parse_int_decimal(self, &val);
                 if (stat < 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 if (validate_int_range(self, val) != 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 break;
         case CAT_VAR_UINT_DEC:
                 stat = parse_uint_decimal(self, (uint64_t*)&val);
                 if (stat < 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 if (validate_uint_range(self, val) != 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 break;
         case CAT_VAR_NUM_HEX:
                 stat = parse_num_hexadecimal(self, (uint64_t*)&val);
                 if (stat < 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 if (validate_uint_range(self, val) != 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 break;
         case CAT_VAR_BUF_HEX:
                 stat = parse_buffer_hexadecimal(self);
                 if (stat < 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 break;
         case CAT_VAR_BUF_STRING:
                 stat = parse_buffer_string(self);
                 if (stat < 0) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 break;
         }
 
         if ((self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
 
         if ((++self->index < self->cmd->var_num) && (stat > 0)) {
                 self->var = &self->cmd->var[self->index];
-                return 1;
+                return CAT_STATUS_BUSY;
         }
 
         if (stat > 0) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
 
         if ((self->cmd->need_all_vars != false) && (self->index != self->cmd->var_num)) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
 
         if (self->cmd->write == NULL) {
                 ack_ok(self);
-                return 1;
+                return CAT_STATUS_BUSY;
         }
 
         if (self->cmd->write(self->cmd, self->desc->buf, self->length, self->index) != 0) {
                 ack_error(self);
-                return 1;
+                return CAT_STATUS_BUSY;
         }
 
         ack_ok(self);
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
 static int print_format_num(struct cat_object *self, char *fmt, uint32_t val)
@@ -1159,7 +1159,7 @@ static int format_info_type(struct cat_object *self)
         return 0;
 }
 
-static int parse_read_args(struct cat_object *self)
+static cat_status parse_read_args(struct cat_object *self)
 {
         int stat;
 
@@ -1167,7 +1167,7 @@ static int parse_read_args(struct cat_object *self)
 
         if ((self->var->read != NULL) && (self->var->read(self->var) != 0)) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
         
         switch (self->var->type) {
@@ -1190,63 +1190,63 @@ static int parse_read_args(struct cat_object *self)
 
         if (stat < 0) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }        
 
         if (++self->index < self->cmd->var_num) {
                 if (self->position >= self->desc->buf_size) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 self->desc->buf[self->position++] = ',';
                 self->var = &self->cmd->var[self->index];
-                return 1;
+                return CAT_STATUS_BUSY;
         }
 
         if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0)) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
         print_buffer(self);
 
         ack_ok(self);
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-static int parse_test_args(struct cat_object *self)
+static cat_status parse_test_args(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (format_info_type(self) < 0) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
 
         if (++self->index < self->cmd->var_num) {
                 if (self->position >= self->desc->buf_size) {
                         ack_error(self);
-                        return -1;
+                        return CAT_STATUS_BUSY;
                 }
                 self->desc->buf[self->position++] = ',';
                 self->var = &self->cmd->var[self->index];
-                return 1;
+                return CAT_STATUS_BUSY;
         }
 
         if (print_response_test(self) != 0) {
                 ack_error(self);
-                return -1;
+                return CAT_STATUS_BUSY;
         }
 
         ack_ok(self);
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-static int parse_command_args(struct cat_object *self)
+static cat_status parse_command_args(struct cat_object *self)
 {
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return 0;
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -1291,10 +1291,10 @@ static int parse_command_args(struct cat_object *self)
                 }
                 break;
         }
-        return 1;
+        return CAT_STATUS_BUSY;
 }
 
-int cat_service(struct cat_object *self)
+cat_status cat_service(struct cat_object *self)
 {
         int s;
 
