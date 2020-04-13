@@ -70,6 +70,16 @@ static void reset_state(struct cat_object *self)
         self->cr_flag = false;
 }
 
+int cat_is_busy(struct cat_object *self)
+{
+        if ((self->state != CAT_STATE_PARSE_PREFIX) ||
+                (self->prefix_state != CAT_PREFIX_STATE_WAIT_A) ||
+                (self->cr_flag != false))
+                return 1;
+
+        return 0;
+}
+
 static const char *get_new_line_chars(struct cat_object *self)
 {
         static const char *crlf = "\r\n";

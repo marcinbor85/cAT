@@ -244,6 +244,16 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
  */
 int cat_service(struct cat_object *self);
 
+/**
+ * Function return flag which indicating internal busy state.
+ * It is used to determine whether external application modules can use shared input / output interfaces functions.
+ * It is usefull especially in rtos environments.
+ * If internal parser state is busy by doing some processing then function return 1.
+ * If the function returns 0, then the external application modules can safely use the input / output interfaces functions shared with the library.
+ * If the function returns 1, then input / output interface function are used by internal parser functions.
+ */
+int cat_is_busy(struct cat_object *self);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,3 +1,6 @@
+0.5.3
+* function for checking internal busy state added
+
 0.5.2
 * small fix in auto description response
 
