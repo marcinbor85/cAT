@@ -76,6 +76,10 @@ add_executable( test_test_args tests/test_test_args.c )
 target_link_libraries( test_test_args cat )
 add_test( test_test_args ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_test_args )
 
+add_executable( test_mutex tests/test_mutex.c )
+target_link_libraries( test_mutex cat )
+add_test( test_mutex ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_mutex )
+
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
 add_custom_target( uninstall COMMAND xargs rm < install_manifest.txt )
