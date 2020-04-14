@@ -274,6 +274,17 @@ cat_status cat_service(struct cat_object *self);
  */
 cat_status cat_is_busy(struct cat_object *self);
 
+/**
+ * Function sends unsolicited read event message.
+ * It can be called only in parser is in idle state.
+ * If parser is busy, function return error code or busy flag.
+ * 
+ * @param self pointer to at command parser object to initialize
+ * @param cmd pointer to command structure regarding which unsolicited read applies to
+ * @return 0 - message send successfully, otherwise error or busy
+ */
+cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd);
+
 #ifdef __cplusplus
 }
 #endif

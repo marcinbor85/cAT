@@ -72,6 +72,19 @@ static void reset_state(struct cat_object *self)
         self->cr_flag = false;
 }
 
+static cat_status is_busy(struct cat_object *self)
+{
+        cat_status s;
+
+        if ((self->state != CAT_STATE_PARSE_PREFIX) || (self->prefix_state != CAT_PREFIX_STATE_WAIT_A) || (self->cr_flag != false)) {
+                s = CAT_STATUS_BUSY;
+        } else {
+                s = CAT_STATUS_OK;
+        }
+
+        return s;
+}
+
 cat_status cat_is_busy(struct cat_object *self)
 {
         int s;
@@ -84,11 +97,7 @@ cat_status cat_is_busy(struct cat_object *self)
                 }
         }
 
-        if ((self->state != CAT_STATE_PARSE_PREFIX) || (self->prefix_state != CAT_PREFIX_STATE_WAIT_A) || (self->cr_flag != false)) {
-                s = CAT_STATUS_BUSY;
-        } else {
-                s = CAT_STATUS_OK;
-        }
+        s = is_busy(self);
 
         if (self->mutex != NULL) {
                 if (self->mutex->unlock() != 0) {
@@ -1294,6 +1303,24 @@ static cat_status parse_command_args(struct cat_object *self)
                 break;
         }
         return CAT_STATUS_BUSY;
+}
+
+cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd)
+{
+        cat_status s;
+
+        assert(self != NULL);
+        assert(cmd != NULL);
+
+        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_LOCK;
+
+        // TODO
+
+        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
+
+        return s;
 }
 
 cat_status cat_service(struct cat_object *self)
