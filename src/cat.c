@@ -87,23 +87,17 @@ static cat_status is_busy(struct cat_object *self)
 
 cat_status cat_is_busy(struct cat_object *self)
 {
-        int s;
+        cat_status s;
 
         assert(self != NULL);
 
-        if (self->mutex != NULL) {
-                if (self->mutex->lock() != 0) {
-                        return CAT_STATUS_ERROR_MUTEX_LOCK;
-                }
-        }
+        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_LOCK;
 
         s = is_busy(self);
 
-        if (self->mutex != NULL) {
-                if (self->mutex->unlock() != 0) {
-                        return CAT_STATUS_ERROR_MUTEX_UNLOCK;
-                }
-        }
+        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
 
         return s;
 }
@@ -852,7 +846,7 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
 static cat_status parse_write_args(struct cat_object *self)
 {
         int64_t val;
-        int stat;
+        cat_status stat;
 
         assert(self != NULL);
 
@@ -1172,7 +1166,7 @@ static int format_info_type(struct cat_object *self)
 
 static cat_status parse_read_args(struct cat_object *self)
 {
-        int stat;
+        cat_status stat;
 
         assert(self != NULL);
 
@@ -1325,15 +1319,12 @@ cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_comm
 
 cat_status cat_service(struct cat_object *self)
 {
-        int s;
+        cat_status s;
 
         assert(self != NULL);
 
-        if (self->mutex != NULL) {
-                if (self->mutex->lock() != 0) {
-                        return CAT_STATUS_ERROR_MUTEX_LOCK;
-                }
-        }
+        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_LOCK;
 
         switch (self->state) {
         case CAT_STATE_ERROR:
@@ -1380,11 +1371,8 @@ cat_status cat_service(struct cat_object *self)
                 break;
         }
 
-        if (self->mutex != NULL) {
-                if (self->mutex->unlock() != 0) {
-                        return CAT_STATUS_ERROR_MUTEX_UNLOCK;
-                }
-        }
+        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
 
         return s;
 }
