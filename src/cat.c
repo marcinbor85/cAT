@@ -67,8 +67,7 @@ static void reset_state(struct cat_object *self)
 {
         assert(self != NULL);
 
-        self->state = CAT_STATE_PARSE_PREFIX;
-        self->prefix_state = CAT_PREFIX_STATE_WAIT_A;
+        self->state = CAT_STATE_IDLE;
         self->cr_flag = false;
 }
 
@@ -76,7 +75,7 @@ static cat_status is_busy(struct cat_object *self)
 {
         cat_status s;
 
-        if ((self->state != CAT_STATE_PARSE_PREFIX) || (self->prefix_state != CAT_PREFIX_STATE_WAIT_A) || (self->cr_flag != false)) {
+        if (self->state != CAT_STATE_IDLE) {
                 s = CAT_STATUS_BUSY;
         } else {
                 s = CAT_STATUS_OK;
@@ -196,6 +195,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->desc = desc;
         self->io = io;
         self->mutex = mutex;
+        self->unsolicited_read_cmd = NULL;        
 
         for (i = 0; i < self->desc->cmd_num; i++)
                 assert(self->desc->cmd[i].name != NULL);
@@ -244,40 +244,22 @@ static cat_status parse_prefix(struct cat_object *self)
         if (read_cmd_char(self) == 0)
                 return CAT_STATUS_OK;
 
-        switch (self->prefix_state) {
-        case CAT_PREFIX_STATE_WAIT_A:
-                switch (self->current_char) {
-                case 'A':
-                        self->prefix_state = CAT_PREFIX_STATE_WAIT_T;
-                        break;
-                case '\n':
-                case '\r':
-                        break;
-                default:
-                        self->state = CAT_STATE_ERROR;
-                        break;
-                }
+        switch (self->current_char) {
+        case 'T':
+                prepare_parse_command(self);
+                self->state = CAT_STATE_PARSE_COMMAND_CHAR;
                 break;
-        case CAT_PREFIX_STATE_WAIT_T:
-                switch (self->current_char) {
-                case 'T':
-                        prepare_parse_command(self);
-                        self->state = CAT_STATE_PARSE_COMMAND_CHAR;
-                        break;
-                case '\n':
-                        ack_error(self);
-                        break;
-                case '\r':
-                        self->cr_flag = true;
-                        break;
-                default:
-                        self->state = CAT_STATE_ERROR;
-                        break;
-                }
+        case '\n':
+                ack_error(self);
+                break;
+        case '\r':
+                self->cr_flag = true;
                 break;
         default:
+                self->state = CAT_STATE_ERROR;
                 break;
         }
+
         return CAT_STATUS_BUSY;
 }
 
@@ -1309,12 +1291,88 @@ cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_comm
         if ((self->mutex != NULL) && (self->mutex->lock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_LOCK;
 
-        // TODO
+        if (self->unsolicited_read_cmd == NULL) {
+                self->unsolicited_read_cmd = cmd;
+                s = CAT_STATUS_OK;
+        } else {
+                s = CAT_STATUS_ERROR_BUFFER_FULL;
+        }
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;
 
         return s;
+}
+
+static cat_status check_unsolicited_buffer(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        if (self->unsolicited_read_cmd == NULL)
+                return CAT_STATUS_OK;
+
+        self->state = CAT_STATE_PROCESS_UNSOLICITED_READ;
+
+        return CAT_STATUS_BUSY;
+}
+
+static cat_status process_idle_state(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        if (read_cmd_char(self) == 0) {
+                return check_unsolicited_buffer(self);
+        } else {
+                switch (self->current_char) {
+                case 'A':
+                        self->state = CAT_STATE_PARSE_PREFIX;
+                        break;
+                case '\n':
+                case '\r':
+                        break;
+                default:
+                        self->state = CAT_STATE_ERROR;
+                        break;
+                }
+
+                return CAT_STATUS_BUSY;
+        }
+}
+
+cat_status process_unsolicited_read(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        self->unsolicited_read_cmd = NULL;
+
+        reset_state(self);
+
+
+        // if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
+        //         self->state = CAT_STATE_PARSE_READ_ARGS;
+        //         self->index = 0;
+        //         self->var = &self->cmd->var[self->index];
+        //         break;
+        // }
+        // if (self->cmd->read == NULL) {
+        //         ack_error(self);
+        //         break;
+        // }
+        // if (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
+        //         ack_error(self);
+        //         break;
+        // }
+        // print_buffer(self);
+
+        // ack_ok(self);
+
+
+        // self->state = CAT_STATE_PROCESS_UNSOLICITED_READ;
+        //         self->cmd = cmd;
+        //         self->index = 0;
+        //         self->var = &self->cmd->var[self->index];
+
+        return CAT_STATUS_BUSY;
 }
 
 cat_status cat_service(struct cat_object *self)
@@ -1329,6 +1387,9 @@ cat_status cat_service(struct cat_object *self)
         switch (self->state) {
         case CAT_STATE_ERROR:
                 s = error_state(self);
+                break;
+        case CAT_STATE_IDLE:
+                s = process_idle_state(self);
                 break;
         case CAT_STATE_PARSE_PREFIX:
                 s = parse_prefix(self);
@@ -1366,10 +1427,16 @@ cat_status cat_service(struct cat_object *self)
         case CAT_STATE_PARSE_TEST_ARGS:
                 s = parse_test_args(self);
                 break;
+        case CAT_STATE_PROCESS_UNSOLICITED_READ:
+                s = process_unsolicited_read(self);
+                break;
         default:
                 s = CAT_STATUS_ERROR_UNKNOWN_STATE;
                 break;
         }
+
+        if (self->unsolicited_read_cmd != NULL)
+                s = CAT_STATUS_BUSY;
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;

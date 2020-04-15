@@ -48,6 +48,7 @@ typedef enum {
 
 /* enum type with function status */
 typedef enum {
+        CAT_STATUS_ERROR_BUFFER_FULL = -4,
         CAT_STATUS_ERROR_UNKNOWN_STATE = -3,
         CAT_STATUS_ERROR_MUTEX_LOCK = -2,
         CAT_STATUS_ERROR_MUTEX_UNLOCK = -1,
@@ -156,6 +157,7 @@ typedef int (*cat_cmd_test_handler)(const struct cat_command *cmd, uint8_t *data
 /* enum type with main at parser fsm state */
 typedef enum {
         CAT_STATE_ERROR = -1,
+        CAT_STATE_IDLE,
         CAT_STATE_PARSE_PREFIX,
         CAT_STATE_PARSE_COMMAND_CHAR,
         CAT_STATE_UPDATE_COMMAND_STATE,
@@ -167,14 +169,9 @@ typedef enum {
         CAT_STATE_PARSE_WRITE_ARGS,
         CAT_STATE_PARSE_READ_ARGS,
         CAT_STATE_WAIT_TEST_ACKNOWLEDGE,
-        CAT_STATE_PARSE_TEST_ARGS
+        CAT_STATE_PARSE_TEST_ARGS,
+        CAT_STATE_PROCESS_UNSOLICITED_READ,
 } cat_state;
-
-/* enum type with prefix parser fsm state */
-typedef enum {
-        CAT_PREFIX_STATE_WAIT_A = 0,
-        CAT_PREFIX_STATE_WAIT_T,
-} cat_prefix_state;
 
 /* enum type with type of command request */
 typedef enum {
@@ -237,8 +234,9 @@ struct cat_object {
 
         char current_char; /* current received char from input stream */
         cat_state state; /* current fsm state */
-        cat_prefix_state prefix_state; /* current prefix fsm state */
         bool cr_flag; /* flag for detect <cr> char in input string */
+
+        struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
 };
 
 /**
@@ -276,8 +274,8 @@ cat_status cat_is_busy(struct cat_object *self);
 
 /**
  * Function sends unsolicited read event message.
- * It can be called only in parser is in idle state.
- * If parser is busy, function return error code or busy flag.
+ * Command message is buffered inside parser in 1-level deep buffer and processed in cat_service context.
+ * Only command pointer is buffered, so command struct should be static or global until be fully processed.
  * 
  * @param self pointer to at command parser object to initialize
  * @param cmd pointer to command structure regarding which unsolicited read applies to
