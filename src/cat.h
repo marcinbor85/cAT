@@ -170,7 +170,6 @@ typedef enum {
         CAT_STATE_PARSE_READ_ARGS,
         CAT_STATE_WAIT_TEST_ACKNOWLEDGE,
         CAT_STATE_PARSE_TEST_ARGS,
-        CAT_STATE_PROCESS_UNSOLICITED_READ,
 } cat_state;
 
 /* enum type with type of command request */
@@ -235,6 +234,7 @@ struct cat_object {
         char current_char; /* current received char from input stream */
         cat_state state; /* current fsm state */
         bool cr_flag; /* flag for detect <cr> char in input string */
+        bool disable_ack; /* flag for disabling ACK messages OK/ERROR during unsolicited read */
 
         struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
 };

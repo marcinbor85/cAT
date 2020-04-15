@@ -69,6 +69,7 @@ static void reset_state(struct cat_object *self)
 
         self->state = CAT_STATE_IDLE;
         self->cr_flag = false;
+        self->disable_ack = false;
 }
 
 static cat_status is_busy(struct cat_object *self)
@@ -127,7 +128,9 @@ static void ack_error(struct cat_object *self)
 {
         assert(self != NULL);
 
-        print_line(self, "ERROR");
+        if (self->disable_ack == false)
+                print_line(self, "ERROR");
+
         reset_state(self);
 }
 
@@ -135,7 +138,9 @@ static void ack_ok(struct cat_object *self)
 {
         assert(self != NULL);
 
-        print_line(self, "OK");
+        if (self->disable_ack == false)
+                print_line(self, "OK");
+
         reset_state(self);
 }
 
@@ -497,6 +502,29 @@ static cat_status search_command(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+
+static void start_processing_parse_read_args(struct cat_object *self)
+{
+        self->position = 0;
+        if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
+                self->state = CAT_STATE_PARSE_READ_ARGS;
+                self->index = 0;
+                self->var = &self->cmd->var[self->index];
+                return;
+        }
+        if (self->cmd->read == NULL) {
+                ack_error(self);
+                return;
+        }
+        if (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
+                ack_error(self);
+                return;
+        }
+        print_buffer(self);
+
+        ack_ok(self);
+}
+
 static cat_status command_found(struct cat_object *self)
 {
         assert(self != NULL);
@@ -516,24 +544,7 @@ static cat_status command_found(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_CMD_TYPE_READ:
-                self->position = 0;
-                if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
-                        self->state = CAT_STATE_PARSE_READ_ARGS;
-                        self->index = 0;
-                        self->var = &self->cmd->var[self->index];
-                        break;
-                }
-                if (self->cmd->read == NULL) {
-                        ack_error(self);
-                        break;
-                }
-                if (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
-                        ack_error(self);
-                        break;
-                }
-                print_buffer(self);
-
-                ack_ok(self);
+                start_processing_parse_read_args(self);
                 break;
         case CAT_CMD_TYPE_WRITE:
                 self->length = 0;
@@ -1311,66 +1322,39 @@ static cat_status check_unsolicited_buffer(struct cat_object *self)
         if (self->unsolicited_read_cmd == NULL)
                 return CAT_STATUS_OK;
 
-        self->state = CAT_STATE_PROCESS_UNSOLICITED_READ;
+        self->cmd = self->unsolicited_read_cmd;
+        self->unsolicited_read_cmd = NULL;
+        self->disable_ack = true;
+
+        start_processing_parse_read_args(self);
 
         return CAT_STATUS_BUSY;
 }
 
 static cat_status process_idle_state(struct cat_object *self)
 {
+        cat_status s;
+
         assert(self != NULL);
 
-        if (read_cmd_char(self) == 0) {
-                return check_unsolicited_buffer(self);
-        } else {
-                switch (self->current_char) {
-                case 'A':
-                        self->state = CAT_STATE_PARSE_PREFIX;
-                        break;
-                case '\n':
-                case '\r':
-                        break;
-                default:
-                        self->state = CAT_STATE_ERROR;
-                        break;
-                }
+        s = check_unsolicited_buffer(self);
+        if (s != CAT_STATUS_OK)
+                return s;
 
-                return CAT_STATUS_BUSY;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
+
+        switch (self->current_char) {
+        case 'A':
+                self->state = CAT_STATE_PARSE_PREFIX;
+                break;
+        case '\n':
+        case '\r':
+                break;
+        default:
+                self->state = CAT_STATE_ERROR;
+                break;
         }
-}
-
-cat_status process_unsolicited_read(struct cat_object *self)
-{
-        assert(self != NULL);
-
-        self->unsolicited_read_cmd = NULL;
-
-        reset_state(self);
-
-
-        // if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
-        //         self->state = CAT_STATE_PARSE_READ_ARGS;
-        //         self->index = 0;
-        //         self->var = &self->cmd->var[self->index];
-        //         break;
-        // }
-        // if (self->cmd->read == NULL) {
-        //         ack_error(self);
-        //         break;
-        // }
-        // if (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
-        //         ack_error(self);
-        //         break;
-        // }
-        // print_buffer(self);
-
-        // ack_ok(self);
-
-
-        // self->state = CAT_STATE_PROCESS_UNSOLICITED_READ;
-        //         self->cmd = cmd;
-        //         self->index = 0;
-        //         self->var = &self->cmd->var[self->index];
 
         return CAT_STATUS_BUSY;
 }
@@ -1426,9 +1410,6 @@ cat_status cat_service(struct cat_object *self)
                 break;
         case CAT_STATE_PARSE_TEST_ARGS:
                 s = parse_test_args(self);
-                break;
-        case CAT_STATE_PROCESS_UNSOLICITED_READ:
-                s = process_unsolicited_read(self);
                 break;
         default:
                 s = CAT_STATUS_ERROR_UNKNOWN_STATE;
