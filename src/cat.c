@@ -170,27 +170,17 @@ static int print_string_to_buf(struct cat_object *self, const char *str)
         return 0;
 }
 
-static cat_status read_cmd_char(struct cat_object *self)
+static int read_cmd_char(struct cat_object *self)
 {
-        int s;
-        
         assert(self != NULL);
 
-        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
-                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
-
-        s = self->io->read(&self->current_char);
-
-        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
-                return CAT_STATUS_ERROR_MUTEX_LOCK;
-
-        if (s == 0)
-                return CAT_STATUS_OK;
+        if (self->io->read(&self->current_char) == 0)
+                return 0;
 
         if (self->state != CAT_STATE_PARSE_COMMAND_ARGS)
                 self->current_char = to_upper(self->current_char);
 
-        return CAT_STATUS_BUSY;
+        return 1;
 }
 
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex)
@@ -220,12 +210,10 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
 
 static cat_status error_state(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -256,12 +244,10 @@ static void prepare_parse_command(struct cat_object *self)
 
 static cat_status parse_prefix(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case 'T':
@@ -330,12 +316,10 @@ static int print_response_test(struct cat_object *self)
 
 static cat_status parse_command(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -433,12 +417,10 @@ static cat_status update_command(struct cat_object *self)
 
 static cat_status wait_read_acknowledge(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -457,12 +439,10 @@ static cat_status wait_read_acknowledge(struct cat_object *self)
 
 static cat_status wait_test_acknowledge(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -1261,12 +1241,10 @@ static cat_status parse_test_args(struct cat_object *self)
 
 static cat_status parse_command_args(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case '\n':
@@ -1363,8 +1341,8 @@ static cat_status process_idle_state(struct cat_object *self)
         if (s != CAT_STATUS_OK)
                 return s;
 
-        if ((s = read_cmd_char(self)) <= CAT_STATUS_OK)
-                return s;
+        if (read_cmd_char(self) == 0)
+                return CAT_STATUS_OK;
 
         switch (self->current_char) {
         case 'A':
