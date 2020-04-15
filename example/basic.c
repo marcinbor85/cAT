@@ -39,6 +39,40 @@ static char message[16];
 /* helper variable used to exit demo code */
 static bool quit_flag;
 
+/* main global cat_object parser object structure */
+static struct cat_object at;
+
+/* variable assigned to unsolicited command */
+static uint8_t idx;
+
+/* declaring unsolicited command variables array */
+static struct cat_variable unsolicited_read_cmd_vars[] = {
+        {
+                .type = CAT_VAR_UINT_DEC,
+                .data = &idx,
+                .data_size = sizeof(idx),
+        }
+};
+
+/* declaring unsolicited command */
+static struct cat_command unsolicited_read_cmd = {
+        .name = "+EVENT",
+        .var = unsolicited_read_cmd_vars,
+        .var_num = sizeof(unsolicited_read_cmd_vars) / sizeof(unsolicited_read_cmd_vars[0]),
+};
+
+/* write command handler with application dependent login print code */
+static int print_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
+{
+        idx += 1;
+
+        /* this unsolicited read command will be printed after acknowledge by OK current print write command */
+        /* this function can be invoked asynchronous to cat_service, but in this simple example is called here */
+        cat_trigger_unsolicited_read(&at, &unsolicited_read_cmd);
+
+        return 0;
+}
+
 /* run command handler with application dependent login print code */
 static int print_run(const struct cat_command *cmd)
 {
@@ -81,6 +115,7 @@ static struct cat_command cmds[] = {
                 .name = "+PRINT",
                 .description = "Printing something special at (X,Y).",
                 .run = print_run,
+                .write = print_write,
                 .var = print_vars,
                 .var_num = sizeof(print_vars) / sizeof(print_vars[0]),
                 .need_all_vars = true
@@ -124,8 +159,6 @@ static struct cat_io_interface iface = {
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
-
         /* initializing */
 	cat_init(&at, &desc, &iface, NULL);
 
