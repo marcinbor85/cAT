@@ -104,9 +104,9 @@ struct cat_variable {
  * @param data - pointer to arguments buffer for custom parsing
  * @param data_size - length of arguments buffer
  * @param args_num - number of passed arguments connected to variables
- * @return 0 - ok, else error and stop parsing
+ * @return 0 - according to cat_return_state enum definitions
  * */
-typedef int (*cat_cmd_write_handler)(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num);
+typedef cat_return_state (*cat_cmd_write_handler)(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num);
 
 /**
  * Read command function handler (AT+CMD?)
@@ -120,9 +120,9 @@ typedef int (*cat_cmd_write_handler)(const struct cat_command *cmd, const uint8_
  * @param data - pointer to arguments buffer for custom parsing
  * @param data_size - pointer to length of arguments buffer (can be modifed if needed)
  * @param max_data_size - maximum length of buffer pointed by data pointer
- * @return 0 - ok, else error and stop parsing
+ * @return 0 - according to cat_return_state enum definitions
  * */
-typedef int (*cat_cmd_read_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
+typedef cat_return_state (*cat_cmd_read_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
 
 /**
  * Run command function handler (AT+CMD)
@@ -132,9 +132,9 @@ typedef int (*cat_cmd_read_handler)(const struct cat_command *cmd, uint8_t *data
  * If run handler not defined, then run command type is not available.
  * 
  * @param cmd - pointer to struct descriptor of processed command
- * @return 0 - ok, else error and stop parsing
+ * @return 0 - according to cat_return_state enum definitions
  * */
-typedef int (*cat_cmd_run_handler)(const struct cat_command *cmd);
+typedef cat_return_state (*cat_cmd_run_handler)(const struct cat_command *cmd);
 
 /**
  * Test command function handler (AT+CMD=?)
@@ -150,9 +150,19 @@ typedef int (*cat_cmd_run_handler)(const struct cat_command *cmd);
  * @param data - pointer to arguments buffer for custom parsing
  * @param data_size - pointer to length of arguments buffer (can be modifed if needed)
  * @param max_data_size - maximum length of buffer pointed by data pointer
- * @return 0 - ok, else error and stop parsing
+ * @return 0 - according to cat_return_state enum definitions
  * */
-typedef int (*cat_cmd_test_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
+typedef cat_return_state (*cat_cmd_test_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
+
+/* enum type with command callbacks return values meaning */
+typedef enum {
+        CAT_RETURN_STATE_ERROR = -1, /* immediatly error acknowledge */
+        CAT_RETURN_STATE_DATA_OK, /* send current data buffer followed by ok acknowledge */
+        CAT_RETURN_STATE_DATA_NEXT, /* send current data buffer and go to next callback iteration */
+        CAT_RETURN_STATE_NEXT, /* go to next callback iteration without sending anything */
+        CAT_RETURN_STATE_OK, /* immediatly ok acknowledge */
+        CAT_RETURN_STATE_HOLD /* enable hold parser state */
+} cat_return_state;
 
 /* enum type with main at parser fsm state */
 typedef enum {
