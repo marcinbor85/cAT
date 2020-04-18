@@ -1157,7 +1157,7 @@ static int format_info_type(struct cat_object *self)
         return 0;
 }
 
-static cat_status parse_read_args(struct cat_object *self)
+static cat_status format_read_args(struct cat_object *self)
 {
         cat_status stat;
 
@@ -1403,7 +1403,7 @@ cat_status cat_service(struct cat_object *self)
                 s = parse_write_args(self);
                 break;
         case CAT_STATE_FORMAT_READ_ARGS:
-                s = parse_read_args(self);
+                s = format_read_args(self);
                 break;
         case CAT_STATE_WAIT_TEST_ACKNOWLEDGE:
                 s = wait_test_acknowledge(self);
