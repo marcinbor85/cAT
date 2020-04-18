@@ -54,23 +54,39 @@ static struct cat_variable unsolicited_read_cmd_vars[] = {
         }
 };
 
+static cat_return_state unsolicited_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
+
 /* declaring unsolicited command */
 static struct cat_command unsolicited_read_cmd = {
         .name = "+EVENT",
+        .read = unsolicited_read,
         .var = unsolicited_read_cmd_vars,
         .var_num = sizeof(unsolicited_read_cmd_vars) / sizeof(unsolicited_read_cmd_vars[0]),
 };
 
+/* unsolicited cmd read handler */
+static cat_return_state unsolicited_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
+{
+        idx++;
+
+        if (idx > 3) {
+                cat_hold_exit(&at, CAT_STATUS_OK);
+        } else {
+                cat_trigger_unsolicited_read(&at, &unsolicited_read_cmd);
+        }
+
+        return CAT_STATUS_OK;
+}
+
 /* write command handler with application dependent login print code */
 static int print_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
-        idx += 1;
+        idx = 1;
 
-        /* this unsolicited read command will be printed after acknowledge by OK current print write command */
         /* this function can be invoked asynchronous to cat_service, but in this simple example is called here */
         cat_trigger_unsolicited_read(&at, &unsolicited_read_cmd);
 
-        return 0;
+        return CAT_RETURN_STATE_HOLD;
 }
 
 /* run command handler with application dependent login print code */
