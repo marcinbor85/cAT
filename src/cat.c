@@ -448,7 +448,7 @@ static cat_status wait_test_acknowledge(struct cat_object *self)
         case '\n':
                 self->position = 0;
                 if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
-                        self->state = CAT_STATE_PARSE_TEST_ARGS;
+                        self->state = CAT_STATE_FORMAT_TEST_ARGS;
                         self->index = 0;
                         self->var = &self->cmd->var[self->index];
                         break;
@@ -503,11 +503,11 @@ static cat_status search_command(struct cat_object *self)
 }
 
 
-static void start_processing_parse_read_args(struct cat_object *self)
+static void start_processing_format_read_args(struct cat_object *self)
 {
         self->position = 0;
         if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
-                self->state = CAT_STATE_PARSE_READ_ARGS;
+                self->state = CAT_STATE_FORMAT_READ_ARGS;
                 self->index = 0;
                 self->var = &self->cmd->var[self->index];
                 return;
@@ -544,7 +544,7 @@ static cat_status command_found(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_CMD_TYPE_READ:
-                start_processing_parse_read_args(self);
+                start_processing_format_read_args(self);
                 break;
         case CAT_CMD_TYPE_WRITE:
                 self->length = 0;
@@ -1211,7 +1211,7 @@ static cat_status parse_read_args(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-static cat_status parse_test_args(struct cat_object *self)
+static cat_status format_test_args(struct cat_object *self)
 {
         assert(self != NULL);
 
@@ -1326,7 +1326,7 @@ static cat_status check_unsolicited_buffer(struct cat_object *self)
         self->unsolicited_read_cmd = NULL;
         self->disable_ack = true;
 
-        start_processing_parse_read_args(self);
+        start_processing_format_read_args(self);
 
         return CAT_STATUS_BUSY;
 }
@@ -1402,14 +1402,14 @@ cat_status cat_service(struct cat_object *self)
         case CAT_STATE_PARSE_WRITE_ARGS:
                 s = parse_write_args(self);
                 break;
-        case CAT_STATE_PARSE_READ_ARGS:
+        case CAT_STATE_FORMAT_READ_ARGS:
                 s = parse_read_args(self);
                 break;
         case CAT_STATE_WAIT_TEST_ACKNOWLEDGE:
                 s = wait_test_acknowledge(self);
                 break;
-        case CAT_STATE_PARSE_TEST_ARGS:
-                s = parse_test_args(self);
+        case CAT_STATE_FORMAT_TEST_ARGS:
+                s = format_test_args(self);
                 break;
         default:
                 s = CAT_STATUS_ERROR_UNKNOWN_STATE;

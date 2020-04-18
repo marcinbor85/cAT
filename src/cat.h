@@ -91,6 +91,16 @@ struct cat_variable {
         cat_var_read_handler read; /* read variable handler */
 };
 
+/* enum type with command callbacks return values meaning */
+typedef enum {
+        CAT_RETURN_STATE_ERROR = -1, /* immediatly error acknowledge */
+        CAT_RETURN_STATE_DATA_OK, /* send current data buffer followed by ok acknowledge */
+        CAT_RETURN_STATE_DATA_NEXT, /* send current data buffer and go to next callback iteration */
+        CAT_RETURN_STATE_NEXT, /* go to next callback iteration without sending anything */
+        CAT_RETURN_STATE_OK, /* immediatly ok acknowledge */
+        CAT_RETURN_STATE_HOLD /* enable hold parser state */
+} cat_return_state;
+
 /**
  * Write command function handler (AT+CMD=)
  * 
@@ -154,16 +164,6 @@ typedef cat_return_state (*cat_cmd_run_handler)(const struct cat_command *cmd);
  * */
 typedef cat_return_state (*cat_cmd_test_handler)(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
 
-/* enum type with command callbacks return values meaning */
-typedef enum {
-        CAT_RETURN_STATE_ERROR = -1, /* immediatly error acknowledge */
-        CAT_RETURN_STATE_DATA_OK, /* send current data buffer followed by ok acknowledge */
-        CAT_RETURN_STATE_DATA_NEXT, /* send current data buffer and go to next callback iteration */
-        CAT_RETURN_STATE_NEXT, /* go to next callback iteration without sending anything */
-        CAT_RETURN_STATE_OK, /* immediatly ok acknowledge */
-        CAT_RETURN_STATE_HOLD /* enable hold parser state */
-} cat_return_state;
-
 /* enum type with main at parser fsm state */
 typedef enum {
         CAT_STATE_ERROR = -1,
@@ -177,9 +177,9 @@ typedef enum {
         CAT_STATE_COMMAND_NOT_FOUND,
         CAT_STATE_PARSE_COMMAND_ARGS,
         CAT_STATE_PARSE_WRITE_ARGS,
-        CAT_STATE_PARSE_READ_ARGS,
+        CAT_STATE_FORMAT_READ_ARGS,
         CAT_STATE_WAIT_TEST_ACKNOWLEDGE,
-        CAT_STATE_PARSE_TEST_ARGS,
+        CAT_STATE_FORMAT_TEST_ARGS,
 } cat_state;
 
 /* enum type with type of command request */
