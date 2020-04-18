@@ -48,11 +48,12 @@ typedef enum {
 
 /* enum type with function status */
 typedef enum {
-        CAT_STATUS_ERROR_NOT_HOLD = -5,
-        CAT_STATUS_ERROR_BUFFER_FULL = -4,
-        CAT_STATUS_ERROR_UNKNOWN_STATE = -3,
-        CAT_STATUS_ERROR_MUTEX_LOCK = -2,
-        CAT_STATUS_ERROR_MUTEX_UNLOCK = -1,
+        CAT_STATUS_ERROR_NOT_HOLD = -6,
+        CAT_STATUS_ERROR_BUFFER_FULL = -5,
+        CAT_STATUS_ERROR_UNKNOWN_STATE = -4,
+        CAT_STATUS_ERROR_MUTEX_LOCK = -3,
+        CAT_STATUS_ERROR_MUTEX_UNLOCK = -2,
+        CAT_STATUS_ERROR = -1,
         CAT_STATUS_OK = 0,
         CAT_STATUS_BUSY = 1
 } cat_status;
@@ -184,6 +185,7 @@ typedef enum {
         CAT_STATE_WAIT_TEST_ACKNOWLEDGE,
         CAT_STATE_FORMAT_TEST_ARGS,
         CAT_STATE_WRITE_LOOP,
+        CAT_STATE_READ_LOOP,
         CAT_STATE_HOLD,
 } cat_state;
 

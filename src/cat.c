@@ -514,13 +514,7 @@ static void start_processing_format_read_args(struct cat_object *self)
                 ack_error(self);
                 return;
         }
-        if (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0) {
-                ack_error(self);
-                return;
-        }
-        print_buffer(self);
-
-        ack_ok(self);
+        self->state = CAT_STATE_READ_LOOP;
 }
 
 static cat_status command_found(struct cat_object *self)
@@ -1194,8 +1188,8 @@ static cat_status format_read_args(struct cat_object *self)
                 return CAT_STATUS_BUSY;
         }
 
-        if ((self->cmd->read != NULL) && (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0)) {
-                ack_error(self);
+        if (self->cmd->read != NULL) {
+                self->state = CAT_STATE_READ_LOOP;
                 return CAT_STATUS_BUSY;
         }
         print_buffer(self);
@@ -1351,9 +1345,27 @@ static cat_status process_idle_state(struct cat_object *self)
 
 static void enable_hold_state(struct cat_object *self)
 {
+        assert(self != NULL);
+
         self->state = CAT_STATE_HOLD;
         self->hold_state_flag = true;
         self->hold_exit_status = 0;
+}
+
+static cat_status hold_exit(struct cat_object *self, cat_status status)
+{
+        cat_status s;
+
+        assert(self != NULL);
+
+        if (self->hold_state_flag == false) {
+                s = CAT_STATUS_ERROR_NOT_HOLD;
+        } else {
+                self->hold_exit_status = (status == CAT_STATUS_OK) ? 1 : -1;
+                s = CAT_STATUS_OK;
+        }
+
+        return s;
 }
 
 static cat_status process_write_loop(struct cat_object *self)
@@ -1365,13 +1377,50 @@ static cat_status process_write_loop(struct cat_object *self)
         case CAT_RETURN_STATE_DATA_OK:
                 ack_ok(self);
                 break;
-        case CAT_RETURN_STATE_HOLD_EXIT_OK:
-        case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
         case CAT_RETURN_STATE_DATA_NEXT:
         case CAT_RETURN_STATE_NEXT:
                 break;
         case CAT_RETURN_STATE_HOLD:
                 enable_hold_state(self);
+                break;
+        case CAT_RETURN_STATE_HOLD_EXIT_OK:
+        case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
+        case CAT_RETURN_STATE_ERROR:
+        default:
+                ack_error(self);
+                break;
+        }
+
+        return CAT_STATUS_BUSY;
+}
+
+static cat_status process_read_loop(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        switch (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size)) {
+        case CAT_RETURN_STATE_OK:
+                ack_ok(self);
+                break;
+        case CAT_RETURN_STATE_DATA_OK:
+                print_buffer(self);
+                ack_ok(self);
+                break;
+        case CAT_RETURN_STATE_DATA_NEXT:
+                print_buffer(self);
+                start_processing_format_read_args(self);
+                break;
+        case CAT_RETURN_STATE_NEXT:
+                start_processing_format_read_args(self);
+                break;
+        case CAT_RETURN_STATE_HOLD:
+                enable_hold_state(self);
+                break;
+        case CAT_RETURN_STATE_HOLD_EXIT_OK:
+                hold_exit(self, CAT_STATUS_OK);
+                break;
+        case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
+                hold_exit(self, CAT_STATUS_ERROR);
                 break;
         case CAT_RETURN_STATE_ERROR:
         default:
@@ -1414,12 +1463,7 @@ cat_status cat_hold_exit(struct cat_object *self, cat_status status)
         if ((self->mutex != NULL) && (self->mutex->lock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_LOCK;
 
-        if (self->hold_state_flag == false) {
-                s = CAT_STATUS_ERROR_NOT_HOLD;
-        } else {
-                self->hold_exit_status = (status == CAT_STATUS_OK) ? 1 : -1;
-                s = CAT_STATUS_OK;
-        }
+        s = hold_exit(self, status);
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;
@@ -1481,6 +1525,9 @@ cat_status cat_service(struct cat_object *self)
                 break;
         case CAT_STATE_WRITE_LOOP:
                 s = process_write_loop(self);
+                break;
+        case CAT_STATE_READ_LOOP:
+                s = process_read_loop(self);
                 break;
         case CAT_STATE_HOLD:
                 s = process_hold_state(self);
