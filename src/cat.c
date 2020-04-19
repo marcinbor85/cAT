@@ -1418,9 +1418,11 @@ static cat_status process_read_loop(struct cat_object *self)
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
                 hold_exit(self, CAT_STATUS_OK);
+                ack_ok(self);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
                 hold_exit(self, CAT_STATUS_ERROR);
+                ack_error(self);
                 break;
         case CAT_RETURN_STATE_ERROR:
         default:
