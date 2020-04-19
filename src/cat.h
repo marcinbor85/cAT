@@ -230,6 +230,7 @@ struct cat_command {
         struct cat_variable const *var; /* pointer to array of variables assiocated with this command */
         size_t var_num; /* number of variables in array */
         bool need_all_vars; /* flag to need all vars parsing */
+        bool only_test; /* flag to disable read/write/run commands (only test auto description) */
 };
 
 /* structure with at command parser descriptor */

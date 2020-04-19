@@ -541,6 +541,10 @@ static cat_status command_found(struct cat_object *self)
 
         switch (self->cmd_type) {
         case CAT_CMD_TYPE_RUN:
+                if (self->cmd->only_test != false) {
+                        ack_error(self);
+                        break;
+                }
                 if (self->cmd->run == NULL) {
                         ack_error(self);
                         break;
@@ -549,6 +553,10 @@ static cat_status command_found(struct cat_object *self)
                 self->state = CAT_STATE_RUN_LOOP;
                 break;
         case CAT_CMD_TYPE_READ:
+                if (self->cmd->only_test != false) {
+                        ack_error(self);
+                        break;
+                }
                 start_processing_format_read_args(self);
                 break;
         case CAT_CMD_TYPE_WRITE:
@@ -1245,6 +1253,10 @@ static cat_status parse_command_args(struct cat_object *self)
 
         switch (self->current_char) {
         case '\n':
+                if (self->cmd->only_test != false) {
+                        ack_error(self);
+                        break;
+                }
                 if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
                         self->state = CAT_STATE_PARSE_WRITE_ARGS;
                         self->position = 0;
