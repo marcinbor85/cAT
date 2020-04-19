@@ -75,6 +75,28 @@ cat_status cat_is_busy(struct cat_object *self)
         return s;
 }
 
+static cat_status is_hold(struct cat_object *self)
+{
+        return (self->hold_state_flag != false) ? CAT_STATUS_HOLD : CAT_STATUS_OK;
+}
+
+cat_status cat_is_hold(struct cat_object *self)
+{
+        cat_status s;
+
+        assert(self != NULL);
+
+        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_LOCK;
+
+        s = is_hold(self);
+
+        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
+
+        return s;
+}
+
 static const char *get_new_line_chars(struct cat_object *self)
 {
         static const char *crlf = "\r\n";

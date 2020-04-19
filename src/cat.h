@@ -55,7 +55,8 @@ typedef enum {
         CAT_STATUS_ERROR_MUTEX_UNLOCK = -2,
         CAT_STATUS_ERROR = -1,
         CAT_STATUS_OK = 0,
-        CAT_STATUS_BUSY = 1
+        CAT_STATUS_BUSY = 1,
+        CAT_STATUS_HOLD = 2
 } cat_status;
 
 /**
@@ -297,6 +298,17 @@ cat_status cat_service(struct cat_object *self);
  * @return according to cat_return_state enum definitions
  */
 cat_status cat_is_busy(struct cat_object *self);
+
+/**
+ * Function return flag which indicating parsing hold state.
+ * If the function returns 0, then the at parsing process is normal.
+ * If the function returns 1, then the at parsing process is holded.
+ * To exit from hold state, user have to call cat_hold_exit or return HOLD_EXIT return value in callback.
+ * 
+ * @param self pointer to at command parser object
+ * @return according to cat_return_state enum definitions
+ */
+cat_status cat_is_hold(struct cat_object *self);
 
 /**
  * Function sends unsolicited read event message.
