@@ -187,7 +187,10 @@ typedef enum {
         CAT_STATE_WRITE_LOOP,
         CAT_STATE_READ_LOOP,
         CAT_STATE_HOLD,
-        CAT_STATE_FLUSH_IO_WRITE
+        CAT_STATE_FLUSH_IO_WRITE,
+        CAT_STATE_AFTER_FLUSH_RESET,
+        CAT_STATE_AFTER_FLUSH_OK,
+        CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS,
 } cat_state;
 
 /* enum type with type of command request */
@@ -257,6 +260,7 @@ struct cat_object {
         int hold_exit_status; /* hold exit parameter with status */
         char const *write_buf; /* working buffer pointer used for asynch writing to io */
         int write_state; /* before, data, after flush io write state */
+        cat_state write_state_after; /* parser state to set after flush io write */
 
         struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
 };

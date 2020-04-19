@@ -40,21 +40,6 @@ static char to_upper(char ch)
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
 }
 
-static void print_binary_buffer(const struct cat_io_interface *io, const uint8_t *data, size_t size)
-{
-        size_t i;
-
-        assert(io != NULL);
-        assert(data != NULL);
-
-        i = 0;
-        while (size-- > 0) {
-                while (io->write(data[i]) != 1) {
-                };
-                i++;
-        }
-}
-
 static void reset_state(struct cat_object *self)
 {
         assert(self != NULL);
@@ -96,27 +81,14 @@ static const char *get_new_line_chars(struct cat_object *self)
         return &crlf[(self->cr_flag != false) ? 0 : 1];
 }
 
-static void print_line(struct cat_object *self, const char *buf)
-{
-        const char *new_line_chars;
-
-        assert(self != NULL);
-        assert(buf != NULL);
-
-        new_line_chars = get_new_line_chars(self);
-
-        print_binary_buffer(self->io, (uint8_t*)new_line_chars, strlen(new_line_chars));
-        print_binary_buffer(self->io, (uint8_t*)buf, strlen(buf));
-        print_binary_buffer(self->io, (uint8_t*)new_line_chars, strlen(new_line_chars));
-}
-
-static void start_flush_io_buffer(struct cat_object *self)
+static void start_flush_io_buffer(struct cat_object *self, cat_state state_after)
 {
         assert(self != NULL);
 
         self->position = 0;
         self->write_buf = get_new_line_chars(self);
         self->write_state = CAT_WRITE_STATE_BEFORE;
+        self->write_state_after = state_after;
         self->state = CAT_STATE_FLUSH_IO_WRITE;
 }
 
@@ -126,7 +98,7 @@ static void ack_error(struct cat_object *self)
 
         if (self->disable_ack == false) {
                 strncpy((char*)self->desc->buf, "ERROR", self->desc->buf_size);
-                start_flush_io_buffer(self);
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
                 return;
         }
 
@@ -139,7 +111,7 @@ static void ack_ok(struct cat_object *self)
 
         if (self->disable_ack == false) {
                 strncpy((char*)self->desc->buf, "OK", self->desc->buf_size);
-                start_flush_io_buffer(self);
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
                 return;
         }
 
@@ -303,7 +275,7 @@ static int print_response_test(struct cat_object *self)
         if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0))
                 return -1;
 
-        print_line(self, (const char*)self->desc->buf);
+        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
         return 0;
 }
 
@@ -458,12 +430,10 @@ static cat_status wait_test_acknowledge(struct cat_object *self)
                         break;
                 }
 
-                if (print_response_test(self) != 0) {
-                        ack_error(self);
+                if (print_response_test(self) == 0)
                         break;
-                }
 
-                ack_ok(self);
+                ack_error(self);
                 break;
         case '\r':
                 self->cr_flag = true;
@@ -1211,9 +1181,8 @@ static cat_status format_read_args(struct cat_object *self)
                 self->state = CAT_STATE_READ_LOOP;
                 return CAT_STATUS_BUSY;
         }
-        print_line(self, (const char*)self->desc->buf);
 
-        ack_ok(self);
+        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
         return CAT_STATUS_BUSY;
 }
 
@@ -1236,12 +1205,10 @@ static cat_status format_test_args(struct cat_object *self)
                 return CAT_STATUS_BUSY;
         }
 
-        if (print_response_test(self) != 0) {
-                ack_error(self);
+        if (print_response_test(self) == 0)
                 return CAT_STATUS_BUSY;
-        }
 
-        ack_ok(self);
+        ack_error(self);
         return CAT_STATUS_BUSY;
 }
 
@@ -1422,12 +1389,10 @@ static cat_status process_read_loop(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_RETURN_STATE_DATA_OK:
-                print_line(self, (const char*)self->desc->buf);
-                ack_ok(self);
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
                 break;
         case CAT_RETURN_STATE_DATA_NEXT:
-                print_line(self, (const char*)self->desc->buf);
-                start_processing_format_read_args(self);
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS);
                 break;
         case CAT_RETURN_STATE_NEXT:
                 start_processing_format_read_args(self);
@@ -1496,8 +1461,6 @@ static cat_status process_io_write(struct cat_object *self)
 {
         char ch = self->write_buf[self->position];
 
-        printf("%s\n", &self->write_buf[self->position]);
-
         if (ch == '\0') {
                 switch (self->write_state) {
                 case CAT_WRITE_STATE_BEFORE:
@@ -1511,7 +1474,7 @@ static cat_status process_io_write(struct cat_object *self)
                         self->write_state = CAT_WRITE_STATE_AFTER;
                         break;
                 case CAT_WRITE_STATE_AFTER:
-                        reset_state(self);
+                        self->state = self->write_state_after;
                         break;
                 }
                 return CAT_STATUS_BUSY;
@@ -1587,6 +1550,18 @@ cat_status cat_service(struct cat_object *self)
                 break;
         case CAT_STATE_FLUSH_IO_WRITE:
                 s = process_io_write(self);
+                break;
+        case CAT_STATE_AFTER_FLUSH_RESET:
+                reset_state(self);
+                s = CAT_STATUS_BUSY;
+                break;
+        case CAT_STATE_AFTER_FLUSH_OK:
+                ack_ok(self);
+                s = CAT_STATUS_BUSY;
+                break;
+        case CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS:
+                start_processing_format_read_args(self);
+                s = CAT_STATUS_BUSY;
                 break;
         default:
                 s = CAT_STATUS_ERROR_UNKNOWN_STATE;
