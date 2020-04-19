@@ -187,6 +187,7 @@ typedef enum {
         CAT_STATE_WRITE_LOOP,
         CAT_STATE_READ_LOOP,
         CAT_STATE_HOLD,
+        CAT_STATE_FLUSH_IO_WRITE
 } cat_state;
 
 /* enum type with type of command request */
@@ -254,6 +255,8 @@ struct cat_object {
         bool disable_ack; /* flag for disabling ACK messages OK/ERROR during unsolicited read */
         bool hold_state_flag; /* status of hold state (independent from fsm states) */
         int hold_exit_status; /* hold exit parameter with status */
+        char const *write_buf; /* working buffer pointer used for asynch writing to io */
+        int write_state; /* before, data, after flush io write state */
 
         struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
 };

@@ -31,6 +31,10 @@ SOFTWARE.
 #define CAT_CMD_STATE_PARTIAL_MATCH (1U)
 #define CAT_CMD_STATE_FULL_MATCH (2U)
 
+#define CAT_WRITE_STATE_BEFORE (0)
+#define CAT_WRITE_STATE_MAIN_BUFFER (1U)
+#define CAT_WRITE_STATE_AFTER (2U)
+
 static char to_upper(char ch)
 {
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
@@ -106,12 +110,25 @@ static void print_line(struct cat_object *self, const char *buf)
         print_binary_buffer(self->io, (uint8_t*)new_line_chars, strlen(new_line_chars));
 }
 
+static void start_flush_io_buffer(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        self->position = 0;
+        self->write_buf = get_new_line_chars(self);
+        self->write_state = CAT_WRITE_STATE_BEFORE;
+        self->state = CAT_STATE_FLUSH_IO_WRITE;
+}
+
 static void ack_error(struct cat_object *self)
 {
         assert(self != NULL);
 
-        if (self->disable_ack == false)
-                print_line(self, "ERROR");
+        if (self->disable_ack == false) {
+                strncpy((char*)self->desc->buf, "ERROR", self->desc->buf_size);
+                start_flush_io_buffer(self);
+                return;
+        }
 
         reset_state(self);
 }
@@ -120,8 +137,11 @@ static void ack_ok(struct cat_object *self)
 {
         assert(self != NULL);
 
-        if (self->disable_ack == false)
-                print_line(self, "OK");
+        if (self->disable_ack == false) {
+                strncpy((char*)self->desc->buf, "OK", self->desc->buf_size);
+                start_flush_io_buffer(self);
+                return;
+        }
 
         reset_state(self);
 }
@@ -1472,6 +1492,38 @@ cat_status cat_hold_exit(struct cat_object *self, cat_status status)
         return s;
 }
 
+static cat_status process_io_write(struct cat_object *self)
+{
+        char ch = self->write_buf[self->position];
+
+        printf("%s\n", &self->write_buf[self->position]);
+
+        if (ch == '\0') {
+                switch (self->write_state) {
+                case CAT_WRITE_STATE_BEFORE:
+                        self->position = 0;
+                        self->write_buf = (char*)self->desc->buf;
+                        self->write_state = CAT_WRITE_STATE_MAIN_BUFFER;
+                        break;
+                case CAT_WRITE_STATE_MAIN_BUFFER:
+                        self->position = 0;
+                        self->write_buf = get_new_line_chars(self);
+                        self->write_state = CAT_WRITE_STATE_AFTER;
+                        break;
+                case CAT_WRITE_STATE_AFTER:
+                        reset_state(self);
+                        break;
+                }
+                return CAT_STATUS_BUSY;
+        }
+
+        if (self->io->write(ch) != 1)
+                return CAT_STATUS_BUSY;
+
+        self->position++;
+        return CAT_STATUS_BUSY;
+}
+
 cat_status cat_service(struct cat_object *self)
 {
         cat_status s;
@@ -1532,6 +1584,9 @@ cat_status cat_service(struct cat_object *self)
                 break;
         case CAT_STATE_HOLD:
                 s = process_hold_state(self);
+                break;
+        case CAT_STATE_FLUSH_IO_WRITE:
+                s = process_io_write(self);
                 break;
         default:
                 s = CAT_STATUS_ERROR_UNKNOWN_STATE;
