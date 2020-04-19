@@ -546,12 +546,7 @@ static cat_status command_found(struct cat_object *self)
                         break;
                 }
 
-                if (self->cmd->run(self->cmd) != 0) {
-                        ack_error(self);
-                        break;
-                }
-
-                ack_ok(self);
+                self->state = CAT_STATE_RUN_LOOP;
                 break;
         case CAT_CMD_TYPE_READ:
                 start_processing_format_read_args(self);
@@ -1465,6 +1460,32 @@ static cat_status process_write_loop(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static cat_status process_run_loop(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        switch (self->cmd->run(self->cmd)) {
+        case CAT_RETURN_STATE_OK:
+        case CAT_RETURN_STATE_DATA_OK:
+                ack_ok(self);
+                break;
+        case CAT_RETURN_STATE_DATA_NEXT:
+        case CAT_RETURN_STATE_NEXT:
+                break;
+        case CAT_RETURN_STATE_HOLD:
+                enable_hold_state(self);
+                break;
+        case CAT_RETURN_STATE_HOLD_EXIT_OK:
+        case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
+        case CAT_RETURN_STATE_ERROR:
+        default:
+                ack_error(self);
+                break;
+        }
+
+        return CAT_STATUS_BUSY;
+}
+
 static cat_status process_read_loop(struct cat_object *self)
 {
         assert(self != NULL);
@@ -1669,6 +1690,9 @@ cat_status cat_service(struct cat_object *self)
                 break;
         case CAT_STATE_TEST_LOOP:
                 s = process_test_loop(self);
+                break;
+        case CAT_STATE_RUN_LOOP:
+                s = process_run_loop(self);
                 break;
         case CAT_STATE_HOLD:
                 s = process_hold_state(self);
