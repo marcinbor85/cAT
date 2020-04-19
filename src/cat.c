@@ -36,7 +36,7 @@ static char to_upper(char ch)
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
 }
 
-static void print_binary(const struct cat_io_interface *io, const uint8_t *data, size_t size)
+static void print_binary_buffer(const struct cat_io_interface *io, const uint8_t *data, size_t size)
 {
         size_t i;
 
@@ -92,23 +92,18 @@ static const char *get_new_line_chars(struct cat_object *self)
         return &crlf[(self->cr_flag != false) ? 0 : 1];
 }
 
-static void print_new_line(struct cat_object *self)
-{
-        const char *buf;
-
-        assert(self != NULL);
-
-        buf = get_new_line_chars(self);
-        print_binary(self->io, (uint8_t*)buf, strlen(buf));
-}
-
 static void print_line(struct cat_object *self, const char *buf)
 {
-        assert(self != NULL);
+        const char *new_line_chars;
 
-        print_new_line(self);
-        print_binary(self->io, (uint8_t*)buf, strlen(buf));
-        print_new_line(self);
+        assert(self != NULL);
+        assert(buf != NULL);
+
+        new_line_chars = get_new_line_chars(self);
+
+        print_binary_buffer(self->io, (uint8_t*)new_line_chars, strlen(new_line_chars));
+        print_binary_buffer(self->io, (uint8_t*)buf, strlen(buf));
+        print_binary_buffer(self->io, (uint8_t*)new_line_chars, strlen(new_line_chars));
 }
 
 static void ack_error(struct cat_object *self)
