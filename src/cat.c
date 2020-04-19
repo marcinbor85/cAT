@@ -36,18 +36,6 @@ static char to_upper(char ch)
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
 }
 
-static void print_string(const struct cat_io_interface *io, const char *str)
-{
-        assert(io != NULL);
-        assert(str != NULL);
-
-        while (*str != 0) {
-                while (io->write(*str) != 1) {
-                };
-                str++;
-        }
-}
-
 static void print_binary(const struct cat_io_interface *io, const uint8_t *data, size_t size)
 {
         size_t i;
@@ -106,9 +94,12 @@ static const char *get_new_line_chars(struct cat_object *self)
 
 static void print_new_line(struct cat_object *self)
 {
+        const char *buf;
+
         assert(self != NULL);
 
-        print_string(self->io, get_new_line_chars(self));
+        buf = get_new_line_chars(self);
+        print_binary(self->io, (uint8_t*)buf, strlen(buf));
 }
 
 static void print_line(struct cat_object *self, const char *buf)
@@ -116,7 +107,7 @@ static void print_line(struct cat_object *self, const char *buf)
         assert(self != NULL);
 
         print_new_line(self);
-        print_string(self->io, buf);
+        print_binary(self->io, (uint8_t*)buf, strlen(buf));
         print_new_line(self);
 }
 
@@ -145,8 +136,8 @@ static void print_buffer(struct cat_object *self)
         assert(self != NULL);
 
         print_new_line(self);
-        print_string(self->io, self->cmd->name);
-        print_string(self->io, "=");
+        print_binary(self->io, (uint8_t*)self->cmd->name, strlen(self->cmd->name));
+        print_binary(self->io, (uint8_t*)"=", 1);
         print_binary(self->io, self->desc->buf, self->position);
         print_new_line(self);
 }
