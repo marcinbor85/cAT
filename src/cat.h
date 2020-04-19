@@ -346,6 +346,15 @@ cat_status cat_trigger_unsolicited_test(struct cat_object *self, struct cat_comm
  */
 cat_status cat_hold_exit(struct cat_object *self, cat_status status);
 
+/**
+ * Function used to searching registered command by its name.
+ * 
+ * @param self pointer to at command parser object
+ * @param name command name to search
+ * @return pointer to command object, NULL if command not found
+ */
+struct cat_command const* cat_search_command_by_name(struct cat_object *self, const char *name);
+
 #ifdef __cplusplus
 }
 #endif

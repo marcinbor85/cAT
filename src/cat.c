@@ -1612,6 +1612,23 @@ cat_status cat_hold_exit(struct cat_object *self, cat_status status)
         return s;
 }
 
+struct cat_command const* cat_search_command_by_name(struct cat_object *self, const char *name)
+{
+        size_t i;
+        struct cat_command const *cmd;
+
+        assert(self != NULL);
+        assert(name != NULL);
+
+        for (i = 0; i < self->desc->cmd_num; i++) {
+                cmd = &self->desc->cmd[i];
+                if (strcmp(cmd->name, name) == 0)
+                        return cmd;
+        }
+
+        return NULL;
+}
+
 static cat_status process_io_write(struct cat_object *self)
 {
         char ch = self->write_buf[self->position];

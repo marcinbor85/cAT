@@ -115,6 +115,10 @@ add_executable( test_test_only tests/test_test_only.c )
 target_link_libraries( test_test_only cat )
 add_test( test_test_only ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_test_only )
 
+add_executable( test_search_cmd tests/test_search_cmd.c )
+target_link_libraries( test_search_cmd cat )
+add_test( test_search_cmd ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_search_cmd )
+
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
 add_custom_target( uninstall COMMAND xargs rm < install_manifest.txt )

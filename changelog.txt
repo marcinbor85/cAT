@@ -1,7 +1,6 @@
 TODO:
 - differentation of variables for read and write commands
 - help command (printing all commands posibilities with descriptions)
-- helper function for searching command by name
 
 0.6.0
 * async non blocking io->write
@@ -9,6 +8,7 @@ TODO:
 * hold at processing feature (for delayed unsolicited read responses)
 * behavior differentation by callbacks return values
 * only-test flag in commands descriptor (fast disable read/write/run)
+* helper function for searching command by name
 * multiple responses triggered by single request
 * mutex descriptor interface
 * return status enum types
