@@ -24,6 +24,9 @@ target_link_libraries( demo cat )
 add_executable( basic example/basic.c )
 target_link_libraries( basic cat )
 
+add_executable( unsolicited example/unsolicited.c )
+target_link_libraries( unsolicited cat )
+
 add_executable( test_parse tests/test_parse.c )
 target_link_libraries( test_parse cat )
 add_test( test_parse ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_parse )
