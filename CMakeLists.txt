@@ -92,6 +92,10 @@ add_executable( test_return_read tests/test_return_read.c )
 target_link_libraries( test_return_read cat )
 add_test( test_return_read ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_return_read )
 
+add_executable( test_return_write tests/test_return_write.c )
+target_link_libraries( test_return_write cat )
+add_test( test_return_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_return_write )
+
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
 add_custom_target( uninstall COMMAND xargs rm < install_manifest.txt )
