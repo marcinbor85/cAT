@@ -274,7 +274,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
  * Commands handlers will be call from this function context.
  * 
  * @param self pointer to at command parser object
- * @return 0 - nothing to do, waiting for input char, 1 - busy, parsing in progress.
+ * @return according to cat_return_state enum definitions
  */
 cat_status cat_service(struct cat_object *self);
 
@@ -287,7 +287,7 @@ cat_status cat_service(struct cat_object *self);
  * If the function returns 1, then input / output interface function are used by internal parser functions.
  * 
  * @param self pointer to at command parser object
- * @return 0 - nothing to do, waiting for input char, 1 - busy, parsing in progress.
+ * @return according to cat_return_state enum definitions
  */
 cat_status cat_is_busy(struct cat_object *self);
 
@@ -298,7 +298,7 @@ cat_status cat_is_busy(struct cat_object *self);
  * 
  * @param self pointer to at command parser object
  * @param cmd pointer to command structure regarding which unsolicited read applies to
- * @return 0 - message send successfully, otherwise error or busy
+ * @return according to cat_return_state enum definitions
  */
 cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd);
 
