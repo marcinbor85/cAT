@@ -97,7 +97,7 @@ static void ack_error(struct cat_object *self)
         assert(self != NULL);
 
         if (self->disable_ack == false) {
-                strncpy((char*)self->desc->buf, "ERROR", self->desc->buf_size);
+                strncpy((char *)self->desc->buf, "ERROR", self->desc->buf_size);
                 start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
                 return;
         }
@@ -110,7 +110,7 @@ static void ack_ok(struct cat_object *self)
         assert(self != NULL);
 
         if (self->disable_ack == false) {
-                strncpy((char*)self->desc->buf, "OK", self->desc->buf_size);
+                strncpy((char *)self->desc->buf, "OK", self->desc->buf_size);
                 start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
                 return;
         }
@@ -124,7 +124,7 @@ static int print_string_to_buf(struct cat_object *self, const char *str)
         size_t len;
 
         len = self->desc->buf_size - self->position;
-        written = snprintf((char *)&self->desc->buf[self->position], len, "%s", str); 
+        written = snprintf((char *)&self->desc->buf[self->position], len, "%s", str);
 
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
@@ -476,11 +476,10 @@ static cat_status search_command(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-
 static void start_processing_format_read_args(struct cat_object *self)
 {
         assert(self != NULL);
-        
+
         self->position = 0;
 
         if (print_string_to_buf(self, self->cmd->name) != 0) {
@@ -1465,7 +1464,7 @@ static cat_status process_io_write(struct cat_object *self)
                 switch (self->write_state) {
                 case CAT_WRITE_STATE_BEFORE:
                         self->position = 0;
-                        self->write_buf = (char*)self->desc->buf;
+                        self->write_buf = (char *)self->desc->buf;
                         self->write_state = CAT_WRITE_STATE_MAIN_BUFFER;
                         break;
                 case CAT_WRITE_STATE_MAIN_BUFFER:
