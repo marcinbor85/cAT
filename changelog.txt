@@ -1,16 +1,14 @@
 TODO:
-- asynchronous unsolicited events (with triggers and queues and callback indicating message has been sent)
-- synchronous multiple responses (with triggers same trigger as above but status flag indicating end processing)
-- unhold function with immediatly ack response
-- separated function to trigger read but on command parse state context
-- io->write non blocking with separated fsm state
 - differentation of variables for read and write commands
 - help command (printing all commands posibilities with descriptions)
 
 0.6.0
+* async non blocking io->write
+* asynchronous unsolicited read
+* hold at processing feature
+* behavior differentation by callbacks return values
 * mutex descriptor interface
 * return status enum types
-* some refactors
 
 0.5.3
 * function for checking internal busy state added
