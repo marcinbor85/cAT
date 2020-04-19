@@ -4,9 +4,10 @@ TODO:
 
 0.6.0
 * async non blocking io->write
-* asynchronous unsolicited read
-* hold at processing feature
+* async unsolicited read (injected at idle and hold state)
+* hold at processing feature (for delayed unsolicited read responses)
 * behavior differentation by callbacks return values
+* multiple responses triggered by single request
 * mutex descriptor interface
 * return status enum types
 
