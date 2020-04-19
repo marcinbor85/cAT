@@ -39,56 +39,6 @@ static char message[16];
 /* helper variable used to exit demo code */
 static bool quit_flag;
 
-/* main global cat_object parser object structure */
-static struct cat_object at;
-
-/* variable assigned to unsolicited command */
-static uint8_t idx;
-
-/* declaring unsolicited command variables array */
-static struct cat_variable unsolicited_read_cmd_vars[] = {
-        {
-                .type = CAT_VAR_UINT_DEC,
-                .data = &idx,
-                .data_size = sizeof(idx),
-        }
-};
-
-static cat_return_state unsolicited_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size);
-
-/* declaring unsolicited command */
-static struct cat_command unsolicited_read_cmd = {
-        .name = "+EVENT",
-        .read = unsolicited_read,
-        .var = unsolicited_read_cmd_vars,
-        .var_num = sizeof(unsolicited_read_cmd_vars) / sizeof(unsolicited_read_cmd_vars[0]),
-};
-
-/* unsolicited cmd read handler */
-static cat_return_state unsolicited_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
-{
-        idx++;
-
-        if (idx > 3) {
-                cat_hold_exit(&at, CAT_STATUS_OK);
-        } else {
-                cat_trigger_unsolicited_read(&at, &unsolicited_read_cmd);
-        }
-
-        return CAT_STATUS_OK;
-}
-
-/* write command handler with application dependent login print code */
-static int print_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
-{
-        idx = 1;
-
-        /* this function can be invoked asynchronous to cat_service, but in this simple example is called here */
-        cat_trigger_unsolicited_read(&at, &unsolicited_read_cmd);
-
-        return CAT_RETURN_STATE_HOLD;
-}
-
 /* run command handler with application dependent login print code */
 static int print_run(const struct cat_command *cmd)
 {
@@ -131,7 +81,6 @@ static struct cat_command cmds[] = {
                 .name = "+PRINT",
                 .description = "Printing something special at (X,Y).",
                 .run = print_run,
-                .write = print_write,
                 .var = print_vars,
                 .var_num = sizeof(print_vars) / sizeof(print_vars[0]),
                 .need_all_vars = true
@@ -175,8 +124,10 @@ static struct cat_io_interface iface = {
 
 int main(int argc, char **argv)
 {
+	struct cat_object at;
+
         /* initializing */
-	cat_init(&at, &desc, &iface, NULL);
+	cat_init(&at, &desc, &iface);
 
         /* main loop with exit code conditions */
         while ((cat_service(&at) != 0) && (quit_flag == 0)) {};
