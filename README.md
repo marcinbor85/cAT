@@ -9,7 +9,7 @@ Plain C library for parsing AT commands.
 * support for READ, WRITE, TEST and RUN type commands
 * commands shortcuts (auto select best command candidate)
 * single request - multiple responses
-* unsolicited read command support
+* unsolicited read/test command support
 * hold state for delayed responses for time-consuming tasks
 * high-level memory variables mapping arguments parsing
 * automatic arguments types validating

@@ -186,6 +186,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->io = io;
         self->mutex = mutex;
         self->unsolicited_read_cmd = NULL;
+        self->unsolicited_test_cmd = NULL;
         self->hold_state_flag = false;
         self->hold_exit_status = 0;
 
@@ -294,8 +295,10 @@ static int print_response_test(struct cat_object *self)
                         return -1;
         }
 
-        if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0))
-                return -1;
+        if (self->cmd->test != NULL) {
+                self->state = CAT_STATE_TEST_LOOP;
+                return 0;
+        }
 
         start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
         return 0;
@@ -424,6 +427,33 @@ static cat_status wait_read_acknowledge(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static void start_processing_format_test_args(struct cat_object *self)
+{
+        self->position = 0;
+
+        if (print_string_to_buf(self, self->cmd->name) != 0) {
+                ack_error(self);
+                return;
+        }
+
+        if (print_string_to_buf(self, "=") != 0) {
+                ack_error(self);
+                return;
+        }
+
+        if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
+                self->state = CAT_STATE_FORMAT_TEST_ARGS;
+                self->index = 0;
+                self->var = &self->cmd->var[self->index];
+                return;
+        }
+
+        if (print_response_test(self) == 0)
+                return;
+
+        ack_error(self);
+}
+
 static cat_status wait_test_acknowledge(struct cat_object *self)
 {
         assert(self != NULL);
@@ -433,29 +463,7 @@ static cat_status wait_test_acknowledge(struct cat_object *self)
 
         switch (self->current_char) {
         case '\n':
-                self->position = 0;
-
-                if (print_string_to_buf(self, self->cmd->name) != 0) {
-                        ack_error(self);
-                        break;
-                }
-
-                if (print_string_to_buf(self, "=") != 0) {
-                        ack_error(self);
-                        break;
-                }
-
-                if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
-                        self->state = CAT_STATE_FORMAT_TEST_ARGS;
-                        self->index = 0;
-                        self->var = &self->cmd->var[self->index];
-                        break;
-                }
-
-                if (print_response_test(self) == 0)
-                        break;
-
-                ack_error(self);
+                start_processing_format_test_args(self);
                 break;
         case '\r':
                 self->cr_flag = true;
@@ -1306,7 +1314,30 @@ cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_comm
         return s;
 }
 
-static cat_status check_unsolicited_buffer(struct cat_object *self)
+cat_status cat_trigger_unsolicited_test(struct cat_object *self, struct cat_command const *cmd)
+{
+        cat_status s;
+
+        assert(self != NULL);
+        assert(cmd != NULL);
+
+        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_LOCK;
+
+        if (self->unsolicited_test_cmd == NULL) {
+                self->unsolicited_test_cmd = cmd;
+                s = CAT_STATUS_OK;
+        } else {
+                s = CAT_STATUS_ERROR_BUFFER_FULL;
+        }
+
+        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
+
+        return s;
+}
+
+static cat_status check_unsolicited_read_buffer(struct cat_object *self)
 {
         assert(self != NULL);
 
@@ -1322,13 +1353,46 @@ static cat_status check_unsolicited_buffer(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static cat_status check_unsolicited_test_buffer(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        if (self->unsolicited_test_cmd == NULL)
+                return CAT_STATUS_OK;
+
+        self->cmd = self->unsolicited_test_cmd;
+        self->unsolicited_test_cmd = NULL;
+        self->disable_ack = true;
+
+        start_processing_format_test_args(self);
+
+        return CAT_STATUS_BUSY;
+}
+
+static cat_status check_unsolicited_buffers(struct cat_object *self)
+{
+        cat_status s;
+
+        assert(self != NULL);
+
+        s = check_unsolicited_read_buffer(self);
+        if (s != CAT_STATUS_OK)
+                return s;
+        
+        s = check_unsolicited_test_buffer(self);
+        if (s != CAT_STATUS_OK)
+                return s;
+
+        return CAT_STATUS_OK;
+}
+
 static cat_status process_idle_state(struct cat_object *self)
 {
         cat_status s;
 
         assert(self != NULL);
 
-        s = check_unsolicited_buffer(self);
+        s = check_unsolicited_buffers(self);
         if (s != CAT_STATUS_OK)
                 return s;
 
@@ -1438,13 +1502,50 @@ static cat_status process_read_loop(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static cat_status process_test_loop(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        switch (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size)) {
+        case CAT_RETURN_STATE_OK:
+                ack_ok(self);
+                break;
+        case CAT_RETURN_STATE_DATA_OK:
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                break;
+        case CAT_RETURN_STATE_DATA_NEXT:
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS);
+                break;
+        case CAT_RETURN_STATE_NEXT:
+                start_processing_format_test_args(self);
+                break;
+        case CAT_RETURN_STATE_HOLD:
+                enable_hold_state(self);
+                break;
+        case CAT_RETURN_STATE_HOLD_EXIT_OK:
+                hold_exit(self, CAT_STATUS_OK);
+                ack_ok(self);
+                break;
+        case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
+                hold_exit(self, CAT_STATUS_ERROR);
+                ack_error(self);
+                break;
+        case CAT_RETURN_STATE_ERROR:
+        default:
+                ack_error(self);
+                break;
+        }
+
+        return CAT_STATUS_BUSY;
+}
+
 static cat_status process_hold_state(struct cat_object *self)
 {
         cat_status s;
 
         assert(self != NULL);
 
-        s = check_unsolicited_buffer(self);
+        s = check_unsolicited_buffers(self);
         if (s != CAT_STATUS_OK)
                 return s;
 
@@ -1566,6 +1667,9 @@ cat_status cat_service(struct cat_object *self)
         case CAT_STATE_READ_LOOP:
                 s = process_read_loop(self);
                 break;
+        case CAT_STATE_TEST_LOOP:
+                s = process_test_loop(self);
+                break;
         case CAT_STATE_HOLD:
                 s = process_hold_state(self);
                 break;
@@ -1584,12 +1688,16 @@ cat_status cat_service(struct cat_object *self)
                 start_processing_format_read_args(self);
                 s = CAT_STATUS_BUSY;
                 break;
+        case CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS:
+                start_processing_format_test_args(self);
+                s = CAT_STATUS_BUSY;
+                break;
         default:
                 s = CAT_STATUS_ERROR_UNKNOWN_STATE;
                 break;
         }
 
-        if (self->unsolicited_read_cmd != NULL)
+        if ((self->unsolicited_read_cmd != NULL) || (self->unsolicited_test_cmd != NULL))
                 s = CAT_STATUS_BUSY;
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))

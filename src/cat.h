@@ -187,11 +187,13 @@ typedef enum {
         CAT_STATE_FORMAT_TEST_ARGS,
         CAT_STATE_WRITE_LOOP,
         CAT_STATE_READ_LOOP,
+        CAT_STATE_TEST_LOOP,
         CAT_STATE_HOLD,
         CAT_STATE_FLUSH_IO_WRITE,
         CAT_STATE_AFTER_FLUSH_RESET,
         CAT_STATE_AFTER_FLUSH_OK,
         CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS,
+        CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS,
 } cat_state;
 
 /* enum type with type of command request */
@@ -264,6 +266,7 @@ struct cat_object {
         cat_state write_state_after; /* parser state to set after flush io write */
 
         struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
+        struct cat_command const *unsolicited_test_cmd; /* pointer to command used to unsolicited test */
 };
 
 /**
@@ -320,6 +323,17 @@ cat_status cat_is_hold(struct cat_object *self);
  * @return according to cat_return_state enum definitions
  */
 cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd);
+
+/**
+ * Function sends unsolicited test event message.
+ * Command message is buffered inside parser in 1-level deep buffer and processed in cat_service context.
+ * Only command pointer is buffered, so command struct should be static or global until be fully processed.
+ * 
+ * @param self pointer to at command parser object
+ * @param cmd pointer to command structure regarding which unsolicited test applies to
+ * @return according to cat_return_state enum definitions
+ */
+cat_status cat_trigger_unsolicited_test(struct cat_object *self, struct cat_command const *cmd);
 
 /**
  * Function used to exit from hold state with OK/ERROR response and back to idle state.

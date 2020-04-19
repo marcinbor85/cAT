@@ -4,7 +4,7 @@ TODO:
 
 0.6.0
 * async non blocking io->write
-* async unsolicited read (injected at idle and hold state)
+* async unsolicited read/test event (injected at idle and hold state)
 * hold at processing feature (for delayed unsolicited read responses)
 * behavior differentation by callbacks return values
 * multiple responses triggered by single request
