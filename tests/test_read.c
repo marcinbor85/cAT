@@ -50,7 +50,7 @@ static int a_read(const struct cat_command *cmd, uint8_t *data, size_t *data_siz
         strcat(read_results, " A:");
         strcat(read_results, cmd->name);
 
-        snprintf(data, max_data_size, "A-val");
+        snprintf(data, max_data_size, "%s=A-val", cmd->name);
         *data_size = strlen(data);
 
         return 0;

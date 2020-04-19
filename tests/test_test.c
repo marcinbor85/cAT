@@ -42,7 +42,7 @@ static int a_test(const struct cat_command *cmd, uint8_t *data, size_t *data_siz
         strcat(test_results, " A:");
         strcat(test_results, cmd->name);
 
-        snprintf(data, max_data_size, "A-val");
+        snprintf(data, max_data_size, "%s=A-val", cmd->name);
         *data_size = strlen(data);
 
         return 0;

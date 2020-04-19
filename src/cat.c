@@ -131,24 +131,13 @@ static void ack_ok(struct cat_object *self)
         reset_state(self);
 }
 
-static void print_buffer(struct cat_object *self)
-{
-        assert(self != NULL);
-
-        print_new_line(self);
-        print_binary(self->io, (uint8_t*)self->cmd->name, strlen(self->cmd->name));
-        print_binary(self->io, (uint8_t*)"=", 1);
-        print_binary(self->io, self->desc->buf, self->position);
-        print_new_line(self);
-}
-
 static int print_string_to_buf(struct cat_object *self, const char *str)
 {
         int written;
         size_t len;
 
         len = self->desc->buf_size - self->position;
-        written = snprintf((char *)&self->desc->buf[self->position], len, "%s", str);
+        written = snprintf((char *)&self->desc->buf[self->position], len, "%s", str); 
 
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
@@ -299,7 +288,7 @@ static int print_response_test(struct cat_object *self)
         if ((self->cmd->test != NULL) && (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size) != 0))
                 return -1;
 
-        print_buffer(self);
+        print_line(self, (const char*)self->desc->buf);
         return 0;
 }
 
@@ -436,6 +425,17 @@ static cat_status wait_test_acknowledge(struct cat_object *self)
         switch (self->current_char) {
         case '\n':
                 self->position = 0;
+
+                if (print_string_to_buf(self, self->cmd->name) != 0) {
+                        ack_error(self);
+                        break;
+                }
+
+                if (print_string_to_buf(self, "=") != 0) {
+                        ack_error(self);
+                        break;
+                }
+
                 if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
                         self->state = CAT_STATE_FORMAT_TEST_ARGS;
                         self->index = 0;
@@ -494,7 +494,20 @@ static cat_status search_command(struct cat_object *self)
 
 static void start_processing_format_read_args(struct cat_object *self)
 {
+        assert(self != NULL);
+        
         self->position = 0;
+
+        if (print_string_to_buf(self, self->cmd->name) != 0) {
+                ack_error(self);
+                return;
+        }
+
+        if (print_string_to_buf(self, "=") != 0) {
+                ack_error(self);
+                return;
+        }
+
         if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
                 self->state = CAT_STATE_FORMAT_READ_ARGS;
                 self->index = 0;
@@ -1048,7 +1061,7 @@ static int format_buffer_string(struct cat_object *self)
                         self->desc->buf[self->position++] = ch;
                         if (self->position >= self->desc->buf_size)
                                 return -1;
-                        self->desc->buf[self->position++] = 0;
+                        self->desc->buf[self->position] = 0;
                 }
         }
 
@@ -1183,7 +1196,7 @@ static cat_status format_read_args(struct cat_object *self)
                 self->state = CAT_STATE_READ_LOOP;
                 return CAT_STATUS_BUSY;
         }
-        print_buffer(self);
+        print_line(self, (const char*)self->desc->buf);
 
         ack_ok(self);
         return CAT_STATUS_BUSY;
@@ -1394,11 +1407,11 @@ static cat_status process_read_loop(struct cat_object *self)
                 ack_ok(self);
                 break;
         case CAT_RETURN_STATE_DATA_OK:
-                print_buffer(self);
+                print_line(self, (const char*)self->desc->buf);
                 ack_ok(self);
                 break;
         case CAT_RETURN_STATE_DATA_NEXT:
-                print_buffer(self);
+                print_line(self, (const char*)self->desc->buf);
                 start_processing_format_read_args(self);
                 break;
         case CAT_RETURN_STATE_NEXT:
