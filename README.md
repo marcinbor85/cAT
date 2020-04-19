@@ -36,27 +36,51 @@ make test
 sudo make install
 ```
 
-## Example demo posibilities
+## Example basic demo posibilities
 
 ```console
-at+print=?                                      # TEST command
+AT+PRINT=?                                      # TEST command
 +PRINT=<X:UINT8>,<Y:UINT8>,<MESSAGE:STRING>     # Automatic response
 Printing something special at (X,Y).            # Automatic response
 OK                                              # Automatic acknowledge
 
-at+print?                                       # READ command
+AT+PRINT?                                       # READ command
 +PRINT=0,0,""                                   # Automatic response
 OK                                              # Automatic acknowledge
 
-at+print=xyz,-2                                 # WRITE command
+AT+PRINT=xyz,-2                                 # WRITE command
 ERROR                                           # Automatic acknowledge
 
-at+print=1,2,"test"                             # WRITE command
+AT+PRINT=1,2,"test"                             # WRITE command
 OK                                              # Automatic acknowledge
 
-at+print                                        # RUN command
+AT+PRINT                                        # RUN command
 some printing at (1,2) with text "test"         # Manual response
 OK                                              # Automatic acknowledge
+```
+
+## Example unsolicited demo posibilities
+
+```console
+AT+START=?                                              # TEST command
++START=<MODE:UINT32>                                    # Automatic response
+Start scanning after write (0 - wifi, 1 - bluetooth).   # Automatic response
+OK                                                      # Automatic acknowledge
+
+AT+START=0                                              # WRITE command
++SCAN=-10,"wifi1"                                       # Unsolicited read response
++SCAN=-50,"wifi2"                                       # Unsolicited read response
++SCAN=-20,"wifi3"                                       # Unsolicited read response
+OK                                                      # Unsolicited acknowledge
+
+AT+START=1                                              # WRITE command
++SCAN=-20,"bluetooth1"                                  # Unsolicited read response
+OK                                                      # Unsolicited acknowledge
+
+AT+SCAN=?                                               # TEST command
++SCAN=<RSSI:INT32>,<SSID:STRING>                        # Automatic response
+Scan result record.                                     # Automatic response
+OK                                                      # Automatic acknowledge
 ```
 
 ## Usage
