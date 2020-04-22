@@ -5,13 +5,13 @@ TODO:
 0.6.0
 * async non blocking io->write
 * async unsolicited read/test event (injected at idle and hold state)
-* hold at processing feature (for delayed unsolicited read responses)
+* hold commands parse processing feature (for delayed unsolicited read responses)
 * behavior differentation by callbacks return values
-* only-test flag in commands descriptor (fast disable read/write/run)
+* only-test flag in commands descriptor (for fast disable read/write/run)
 * helper function for searching command by name
-* multiple responses triggered by single request
-* mutex descriptor interface
-* return status enum types
+* multiple responses triggered by single request pattern support
+* generic mutex descriptor interface
+* return value states enum types
 
 0.5.3
 * function for checking internal busy state added
