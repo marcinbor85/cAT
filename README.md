@@ -3,11 +3,14 @@
 Plain C library for parsing AT commands.
 
 ## Features
-* blazing fast and robust implementation
+* blazing fast, non-blocking, robust implementation
 * 100% static implementation (without any dynamic memory allocation)
 * very small footprint (both RAM and ROM)
 * support for READ, WRITE, TEST and RUN type commands
 * commands shortcuts (auto select best command candidate)
+* single request - multiple responses
+* unsolicited read/test command support
+* hold state for delayed responses for time-consuming tasks
 * high-level memory variables mapping arguments parsing
 * automatic arguments types validating
 * automatic format test responses for commands with variables
@@ -16,8 +19,9 @@ Plain C library for parsing AT commands.
 * dedicated for embedded systems
 * object-oriented architecture
 * separated interface for low-level layer
+* fully asynchronous input/output operations
 * multiplatform and portable
-* asynchronous api (only 2 functions) with event callbacks
+* asynchronous api with event callbacks
 * only two source files
 * wide unit tests
 
@@ -32,27 +36,51 @@ make test
 sudo make install
 ```
 
-## Example demo posibilities
+## Example basic demo posibilities
 
 ```console
-at+print=?                                      # TEST command
+AT+PRINT=?                                      # TEST command
 +PRINT=<X:UINT8>,<Y:UINT8>,<MESSAGE:STRING>     # Automatic response
 Printing something special at (X,Y).            # Automatic response
 OK                                              # Automatic acknowledge
 
-at+print?                                       # READ command
+AT+PRINT?                                       # READ command
 +PRINT=0,0,""                                   # Automatic response
 OK                                              # Automatic acknowledge
 
-at+print=xyz,-2                                 # WRITE command
+AT+PRINT=xyz,-2                                 # WRITE command
 ERROR                                           # Automatic acknowledge
 
-at+print=1,2,"test"                             # WRITE command
+AT+PRINT=1,2,"test"                             # WRITE command
 OK                                              # Automatic acknowledge
 
-at+print                                        # RUN command
+AT+PRINT                                        # RUN command
 some printing at (1,2) with text "test"         # Manual response
 OK                                              # Automatic acknowledge
+```
+
+## Example unsolicited demo posibilities
+
+```console
+AT+START=?                                              # TEST command
++START=<MODE:UINT32>                                    # Automatic response
+Start scanning after write (0 - wifi, 1 - bluetooth).   # Automatic response
+OK                                                      # Automatic acknowledge
+
+AT+START=0                                              # WRITE command
++SCAN=-10,"wifi1"                                       # Unsolicited read response
++SCAN=-50,"wifi2"                                       # Unsolicited read response
++SCAN=-20,"wifi3"                                       # Unsolicited read response
+OK                                                      # Unsolicited acknowledge
+
+AT+START=1                                              # WRITE command
++SCAN=-20,"bluetooth1"                                  # Unsolicited read response
+OK                                                      # Unsolicited acknowledge
+
+AT+SCAN=?                                               # TEST command
++SCAN=<RSSI:INT32>,<SSID:STRING>                        # Automatic response
+Scan result record.                                     # Automatic response
+OK                                                      # Automatic acknowledge
 ```
 
 ## Usage
@@ -158,7 +186,7 @@ Initialize AT command parser and run:
 ```c
 struct cat_object at; /* at command parser object */
 
-cat_init(&at, &desc, &iface); /* initialize at command parser object */
+cat_init(&at, &desc, &iface, NULL); /* initialize at command parser object */
 
 while (1) {
         cat_service(&at) /* periodically call at command parser service */

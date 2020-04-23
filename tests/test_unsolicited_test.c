@@ -31,45 +31,77 @@ SOFTWARE.
 
 #include "../src/cat.h"
 
-static char write_results[256];
+static char read_results[256];
 static char ack_results[256];
-
-static uint8_t var[4];
-static size_t var_write_size[4];
-static int var_write_size_index;
 
 static char const *input_text;
 static size_t input_index;
 
-static int cmd_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
+static int var_x, var_u1, var_u2;
+static struct cat_object at;
+
+static struct cat_command u_cmds[];
+
+static cat_return_state cmd_test(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
-        strcat(write_results, " CMD:");
-        strncat(write_results, data, data_size);
-        return 0;
+        cat_status s;
+
+        strcat(read_results, " test:");
+        strcat(read_results, cmd->name);
+
+        if (strcmp(cmd->name, "+CMD") == 0) {
+                s = cat_trigger_unsolicited_test(&at, &u_cmds[1]);
+                assert(s == CAT_STATUS_OK);
+        }
+
+        return CAT_RETURN_STATE_DATA_OK;
 }
 
-static int var_write(const struct cat_variable *var, size_t write_size)
-{
-        var_write_size[var_write_size_index++] = write_size;
-        return 0;
-}
+static struct cat_variable u_vars[] = {
+        {
+                .name = "U1",
+                .type = CAT_VAR_INT_DEC,
+                .data = &var_u1,
+                .data_size = sizeof(var_u1)
+        },
+        {
+                .name = "U2",
+                .type = CAT_VAR_INT_DEC,
+                .data = &var_u2,
+                .data_size = sizeof(var_u2)
+        }
+};
 
 static struct cat_variable vars[] = {
         {
-                .type = CAT_VAR_BUF_HEX,
-                .data = var,
-                .data_size = sizeof(var),
-                .write = var_write
+                .name = "X",
+                .type = CAT_VAR_INT_DEC,
+                .data = &var_x,
+                .data_size = sizeof(var_x)
         }
 };
 
 static struct cat_command cmds[] = {
         {
-                .name = "+SET",
-                .write = cmd_write,
-
+                .name = "+CMD",
+                .test = cmd_test,
                 .var = vars,
-                .var_num = sizeof(vars) / sizeof(vars[0])
+                .var_num = sizeof(vars) / sizeof(vars[0]),
+        }
+};
+
+static struct cat_command u_cmds[] = {
+        {
+                .name = "+U1CMD",
+                .test = cmd_test,
+                .var = &u_vars[0],
+                .var_num = 1,
+        },
+        {
+                .name = "+U2CMD",
+                .test = cmd_test,
+                .var = &u_vars[1],
+                .var_num = 1,
         }
 };
 
@@ -112,54 +144,35 @@ static void prepare_input(const char *text)
         input_text = text;
         input_index = 0;
 
-        memset(var, 0, sizeof(var));
-        memset(var_write_size, 0, sizeof(var_write_size));
-        var_write_size_index = 0;
+        var_x = 1;
+        var_u1 = 2;
+        var_u2 = 3;
 
         memset(ack_results, 0, sizeof(ack_results));
-        memset(write_results, 0, sizeof(write_results));
+        memset(read_results, 0, sizeof(read_results));
 }
 
-static const char test_case_1[] = "\nAT+SET=0\nAT+SET=aa\nAT+SET=001\nAT+SET=12345678\nAT+SET=ffAA\n";
-static const char test_case_2[] = "\nAT+SET=0x11\nAT+SET=11\nAT+SET=-1\nAT+SET=87654321\nAT+SET=0001\nAT+SET=1122334455\n";
+static const char test_case_1[] = "\nAT+CMD=?\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        cat_status s;
 
 	cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
-        while (cat_service(&at) != 0) {};
-        
-        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nERROR\n\nOK\n\nOK\n") == 0);
-        assert(strcmp(write_results, " CMD:aa CMD:12345678 CMD:ffAA") == 0);
 
-        assert(var[0] == 0xFF);
-        assert(var[1] == 0xAA);
-        assert(var[2] == 0x56);
-        assert(var[3] == 0x78);
+        s = cat_trigger_unsolicited_test(&at, &u_cmds[0]);
+        assert(s == CAT_STATUS_OK);
+        s = cat_trigger_unsolicited_test(&at, &u_cmds[1]);
+        assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
 
-        assert(var_write_size[0] == 1);
-        assert(var_write_size[1] == 4);
-        assert(var_write_size[2] == 2);
-        assert(var_write_size[3] == 0);
-
-        prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\nERROR\n\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
-        assert(strcmp(write_results, " CMD:11 CMD:87654321 CMD:0001") == 0);
+        printf("%s\n", ack_results);
 
-        assert(var[0] == 0x11);
-        assert(var[1] == 0x22);
-        assert(var[2] == 0x33);
-        assert(var[3] == 0x44);
-
-        assert(var_write_size[0] == 1);
-        assert(var_write_size[1] == 4);
-        assert(var_write_size[2] == 2);
-        assert(var_write_size[3] == 0);
+        assert(strcmp(ack_results, "\n+U1CMD=<U1:INT32>\n\n+CMD=<X:INT32>\n\nOK\n\n+U2CMD=<U2:INT32>\n") == 0);
+        assert(strcmp(read_results, " test:+U1CMD test:+CMD test:+U2CMD") == 0);
 
 	return 0;
 }

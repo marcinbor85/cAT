@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 {
 	struct cat_object at;
 
-	cat_init(&at, &desc, &iface);
+	cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -273,9 +273,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_3);
         while (cat_service(&at) != 0) {};
 
-        printf("%s\n", ack_results);
-
-        assert(strcmp(ack_results, "\n+ZZ=test1\n\nOK\n\n+ZZ2=test1\n\nOK\n\r\n+ZZ3=\r\nzz3_desctest2\r\n\r\nOK\r\n") == 0);
+        assert(strcmp(ack_results, "\ntest1\n\nOK\n\ntest1\n\nOK\n\r\n+ZZ3=\r\nzz3_desctest2\r\n\r\nOK\r\n") == 0);
 
 	return 0;
 }

@@ -31,65 +31,89 @@ SOFTWARE.
 
 #include "../src/cat.h"
 
-static char run_results[256];
 static char read_results[256];
+static char var_read_results[256];
 static char ack_results[256];
 
 static char const *input_text;
 static size_t input_index;
 
-static int a_run(const struct cat_command *cmd)
+static int var_x, var_u1, var_u2;
+static struct cat_object at;
+
+static struct cat_command u_cmds[];
+
+static cat_return_state cmd_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
-        strcat(run_results, " A_");
-        strcat(run_results, cmd->name);
+        cat_status s;
+
+        strcat(read_results, " read:");
+        strcat(read_results, cmd->name);
+
+        if (strcmp(cmd->name, "+CMD") == 0) {
+                s = cat_trigger_unsolicited_read(&at, &u_cmds[1]);
+                assert(s == CAT_STATUS_OK);
+        }
+
+        return CAT_RETURN_STATE_DATA_OK;
+}
+
+static int var_read(const struct cat_variable *var)
+{
+        strcat(var_read_results, " var_read:");
+        strcat(var_read_results, var->name);
+
         return 0;
 }
 
-static int a_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
-{
-        strcat(read_results, " A:");
-        strcat(read_results, cmd->name);
+static struct cat_variable u_vars[] = {
+        {
+                .name = "U1",
+                .type = CAT_VAR_INT_DEC,
+                .data = &var_u1,
+                .data_size = sizeof(var_u1),
+                .read = var_read
+        },
+        {
+                .name = "U2",
+                .type = CAT_VAR_INT_DEC,
+                .data = &var_u2,
+                .data_size = sizeof(var_u2),
+                .read = var_read
+        }
+};
 
-        snprintf(data, max_data_size, "%s=A-val", cmd->name);
-        *data_size = strlen(data);
-
-        return 0;
-}
-
-static int ap_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
-{
-        strcat(read_results, " AP:");
-        strcat(read_results, cmd->name);
-
-        *data_size = 0;
-
-        return 0;
-}
-
-static int test_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
-{
-        strcat(read_results, " +TEST:");
-        strcat(read_results, cmd->name);
-
-        return -1;
-}
+static struct cat_variable vars[] = {
+        {
+                .name = "X",
+                .type = CAT_VAR_INT_DEC,
+                .data = &var_x,
+                .data_size = sizeof(var_x),
+                .read = var_read
+        }
+};
 
 static struct cat_command cmds[] = {
         {
-                .name = "A",
-                .read = a_read,
-                .run = a_run
+                .name = "+CMD",
+                .read = cmd_read,
+                .var = vars,
+                .var_num = sizeof(vars) / sizeof(vars[0]),
+        }
+};
+
+static struct cat_command u_cmds[] = {
+        {
+                .name = "+U1CMD",
+                .read = cmd_read,
+                .var = &u_vars[0],
+                .var_num = 1,
         },
         {
-                .name = "AP",
-                .read = ap_read
-        },
-        {
-                .name = "+TEST",
-                .read = test_read
-        },
-        {
-                .name = "+EMPTY"
+                .name = "+U2CMD",
+                .read = cmd_read,
+                .var = &u_vars[1],
+                .var_num = 1,
         }
 };
 
@@ -132,25 +156,35 @@ static void prepare_input(const char *text)
         input_text = text;
         input_index = 0;
 
-        memset(run_results, 0, sizeof(run_results));
+        var_x = 1;
+        var_u1 = 2;
+        var_u2 = 3;
+
         memset(ack_results, 0, sizeof(ack_results));
         memset(read_results, 0, sizeof(read_results));
+        memset(var_read_results, 0, sizeof(var_read_results));
 }
 
-static const char test_case_1[] = "\nAT\r\nAT+\nAT+?\nATA?\r\nATAP\nATAP?\nATAPA?\nAT+TEST?\nAT+te?\nAT+e?\nAT+empTY?\r\nATA\r\n";
+static const char test_case_1[] = "\nAT+CMD?\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        cat_status s;
 
 	cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
+
+        s = cat_trigger_unsolicited_read(&at, &u_cmds[0]);
+        assert(s == CAT_STATUS_OK);
+        s = cat_trigger_unsolicited_read(&at, &u_cmds[1]);
+        assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
+
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\r\nOK\r\n\nERROR\n\nERROR\n\r\nA=A-val\r\n\r\nOK\r\n\nERROR\n\nAP=\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\r\nERROR\r\n\r\nOK\r\n") == 0);
-        assert(strcmp(run_results, " A_A") == 0);
-        assert(strcmp(read_results, " A:A AP:AP +TEST:+TEST +TEST:+TEST") == 0);
+        assert(strcmp(ack_results, "\n+U1CMD=2\n\n+CMD=1\n\nOK\n\n+U2CMD=3\n") == 0);
+        assert(strcmp(read_results, " read:+U1CMD read:+CMD read:+U2CMD") == 0);
+        assert(strcmp(var_read_results, " var_read:U1 var_read:X var_read:U2") == 0);
 
 	return 0;
 }

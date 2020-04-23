@@ -52,8 +52,8 @@ static int cmd_read(const struct cat_command *cmd, uint8_t *data, size_t *data_s
 
 static int cmd2_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
-        sprintf(data, "test");
-        *data_size = 4;
+        sprintf(data, "%s=test", cmd->name);
+        *data_size = strlen(data);
         return 0;
 }
 
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
 {
 	struct cat_object at;
 
-	cat_init(&at, &desc, &iface);
+	cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};

@@ -12,7 +12,7 @@ include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
 add_library( cat SHARED ${SRC_FILES} )
-set_target_properties( cat PROPERTIES VERSION 0.5.3 SOVERSION 1 )
+set_target_properties( cat PROPERTIES VERSION 0.6.0 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
 install( TARGETS cat DESTINATION lib )
@@ -23,6 +23,9 @@ target_link_libraries( demo cat )
 
 add_executable( basic example/basic.c )
 target_link_libraries( basic cat )
+
+add_executable( unsolicited example/unsolicited.c )
+target_link_libraries( unsolicited cat )
 
 add_executable( test_parse tests/test_parse.c )
 target_link_libraries( test_parse cat )
@@ -75,6 +78,46 @@ add_test( test_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_test )
 add_executable( test_test_args tests/test_test_args.c )
 target_link_libraries( test_test_args cat )
 add_test( test_test_args ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_test_args )
+
+add_executable( test_mutex tests/test_mutex.c )
+target_link_libraries( test_mutex cat )
+add_test( test_mutex ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_mutex )
+
+add_executable( test_unsolicited_read tests/test_unsolicited_read.c )
+target_link_libraries( test_unsolicited_read cat )
+add_test( test_unsolicited_read ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_unsolicited_read )
+
+add_executable( test_hold_state tests/test_hold_state.c )
+target_link_libraries( test_hold_state cat )
+add_test( test_hold_state ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_hold_state )
+
+add_executable( test_return_read tests/test_return_read.c )
+target_link_libraries( test_return_read cat )
+add_test( test_return_read ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_return_read )
+
+add_executable( test_return_write tests/test_return_write.c )
+target_link_libraries( test_return_write cat )
+add_test( test_return_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_return_write )
+
+add_executable( test_unsolicited_test tests/test_unsolicited_test.c )
+target_link_libraries( test_unsolicited_test cat )
+add_test( test_unsolicited_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_unsolicited_test )
+
+add_executable( test_return_test tests/test_return_test.c )
+target_link_libraries( test_return_test cat )
+add_test( test_return_test ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_return_test )
+
+add_executable( test_return_run tests/test_return_run.c )
+target_link_libraries( test_return_run cat )
+add_test( test_return_run ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_return_run )
+
+add_executable( test_test_only tests/test_test_only.c )
+target_link_libraries( test_test_only cat )
+add_test( test_test_only ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_test_only )
+
+add_executable( test_search_cmd tests/test_search_cmd.c )
+target_link_libraries( test_search_cmd cat )
+add_test( test_search_cmd ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_search_cmd )
 
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
