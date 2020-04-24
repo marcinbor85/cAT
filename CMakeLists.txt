@@ -15,8 +15,10 @@ add_library( cat SHARED ${SRC_FILES} )
 set_target_properties( cat PROPERTIES VERSION 0.6.0 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
+file( GLOB INC_FILES src/*.h )
+
 install( TARGETS cat DESTINATION lib )
-install( FILES src/cat.h DESTINATION include/cat )
+install( FILES ${INC_FILES} DESTINATION include/cat )
 
 add_executable( demo example/demo.c )
 target_link_libraries( demo cat )
