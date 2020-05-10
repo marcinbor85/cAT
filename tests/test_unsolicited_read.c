@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 
         s = cat_is_unsolicited_buffer_full(&at);
         assert(s == CAT_STATUS_OK);
-        s = cat_trigger_unsolicited_read(&at, &u_cmds[0]);
+        s = cat_trigger_unsolicited_event(&at, &u_cmds[0], CAT_CMD_TYPE_READ);
         assert(s == CAT_STATUS_OK);
         s = cat_is_unsolicited_buffer_full(&at);
         assert(s == CAT_STATUS_ERROR_BUFFER_FULL);

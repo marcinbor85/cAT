@@ -1319,12 +1319,13 @@ static cat_status parse_command_args(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd)
+cat_status cat_trigger_unsolicited_event(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type)
 {
         cat_status s;
 
         assert(self != NULL);
         assert(cmd != NULL);
+        assert(((type == CAT_CMD_TYPE_READ) || (type == CAT_CMD_TYPE_TEST)));
 
         if ((self->mutex != NULL) && (self->mutex->lock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_LOCK;
@@ -1332,7 +1333,7 @@ cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_comm
         s = is_unsolicited_buffer_full(self);
         if (s == CAT_STATUS_OK) {
                 self->unsolicited_buffer_cmd = cmd;
-                self->unsolicited_buffer_cmd_type = CAT_CMD_TYPE_READ;
+                self->unsolicited_buffer_cmd_type = type;
         }
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
@@ -1341,26 +1342,14 @@ cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_comm
         return s;
 }
 
+cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd)
+{
+        return cat_trigger_unsolicited_event(self, cmd, CAT_CMD_TYPE_READ);
+}
+
 cat_status cat_trigger_unsolicited_test(struct cat_object *self, struct cat_command const *cmd)
 {
-        cat_status s;
-
-        assert(self != NULL);
-        assert(cmd != NULL);
-
-        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
-                return CAT_STATUS_ERROR_MUTEX_LOCK;
-
-        s = is_unsolicited_buffer_full(self);
-        if (s == CAT_STATUS_OK) {
-                self->unsolicited_buffer_cmd = cmd;
-                self->unsolicited_buffer_cmd_type = CAT_CMD_TYPE_TEST;
-        }
-
-        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
-                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
-
-        return s;
+        return cat_trigger_unsolicited_event(self, cmd, CAT_CMD_TYPE_TEST);
 }
 
 static cat_status check_unsolicited_buffers(struct cat_object *self)

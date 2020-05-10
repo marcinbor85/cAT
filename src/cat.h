@@ -327,6 +327,18 @@ cat_status cat_is_hold(struct cat_object *self);
 cat_status cat_is_unsolicited_buffer_full(struct cat_object *self);
 
 /**
+ * Function sends unsolicited event message.
+ * Command message is buffered inside parser in 1-level deep buffer and processed in cat_service context.
+ * Only command pointer is buffered, so command struct should be static or global until be fully processed.
+ * 
+ * @param self pointer to at command parser object
+ * @param cmd pointer to command structure regarding which unsolicited event applies to
+ * @param type type of operation (only CAT_CMD_TYPE_READ and CAT_CMD_TYPE_TEST are allowed)
+ * @return according to cat_return_state enum definitions
+ */
+cat_status cat_trigger_unsolicited_event(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type);
+
+/**
  * Function sends unsolicited read event message.
  * Command message is buffered inside parser in 1-level deep buffer and processed in cat_service context.
  * Only command pointer is buffered, so command struct should be static or global until be fully processed.
