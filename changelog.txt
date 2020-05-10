@@ -2,6 +2,15 @@ TODO:
 - differentation of variables for read and write commands
 - help command (printing all commands posibilities with descriptions)
 
+- modular init divided to multiple commands arrays
+- commands and groups disable feature
+- synchronous unsolicited events
+- documentation updated
+
+0.7.0
+* function for checking unsolicited buffer
+* some refactoring regarding unsolicited buffer
+
 0.6.0
 * async non blocking io->write
 * async unsolicited read/test event (injected at idle and hold state)
