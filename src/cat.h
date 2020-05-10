@@ -267,8 +267,8 @@ struct cat_object {
         int write_state; /* before, data, after flush io write state */
         cat_state write_state_after; /* parser state to set after flush io write */
 
-        struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
-        struct cat_command const *unsolicited_test_cmd; /* pointer to command used to unsolicited test */
+        struct cat_command const *unsolicited_buffer_cmd; /* pointer to command used to unsolicited event */
+        cat_cmd_type unsolicited_buffer_cmd_type; /* type of unsolicited event */
 };
 
 /**
@@ -314,6 +314,17 @@ cat_status cat_is_busy(struct cat_object *self);
  * @return according to cat_return_state enum definitions
  */
 cat_status cat_is_hold(struct cat_object *self);
+
+/**
+ * Function return flag which indicating state of internal buffer of unsolicited events.
+ * 
+ * @param self pointer to at command parser object
+ * @return CAT_STATUS_OK - buffer is not full, unsolicited event can be buffered
+ *         CAT_STATUS_ERROR_BUFFER_FULL - buffer is full, unsolicited event cannot be buffered
+ *         CAT_STATUS_ERROR_MUTEX_LOCK - cannot lock mutex error
+ *         CAT_STATUS_ERROR_MUTEX_UNLOCK - cannot unlock mutex error
+ */
+cat_status cat_is_unsolicited_buffer_full(struct cat_object *self);
 
 /**
  * Function sends unsolicited read event message.

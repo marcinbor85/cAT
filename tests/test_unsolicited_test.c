@@ -162,8 +162,12 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_1);
 
+        s = cat_is_unsolicited_buffer_full(&at);
+        assert(s == CAT_STATUS_OK);
         s = cat_trigger_unsolicited_test(&at, &u_cmds[0]);
         assert(s == CAT_STATUS_OK);
+        s = cat_is_unsolicited_buffer_full(&at);
+        assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
         s = cat_trigger_unsolicited_test(&at, &u_cmds[1]);
         assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
 
