@@ -192,6 +192,9 @@ static int read_cmd_char(struct cat_object *self)
 
 static struct cat_command const* get_command_by_index(struct cat_object *self, size_t index)
 {
+        assert(self != NULL);
+        assert(index < self->commands_num);
+        
         return &self->desc->cmd[index];
 }
 
