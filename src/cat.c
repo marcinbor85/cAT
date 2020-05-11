@@ -190,6 +190,11 @@ static int read_cmd_char(struct cat_object *self)
         return 1;
 }
 
+static struct cat_command const* get_command_by_index(struct cat_object *self, size_t index)
+{
+        return &self->desc->cmd[index];
+}
+
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex)
 {
         size_t i;
@@ -214,7 +219,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->hold_exit_status = 0;
 
         for (i = 0; i < self->commands_num; i++)
-                assert(self->desc->cmd[i].name != NULL);
+                assert(get_command_by_index(self, i)->name != NULL);
 
         reset_state(self);
 }
@@ -383,7 +388,7 @@ static uint8_t get_cmd_state(struct cat_object *self, size_t i)
         s >>= (i % 4) << 1;
         s &= 0x03;
 
-        if (self->desc->cmd[i].disable != false)
+        if ((get_command_by_index(self, i))->disable != false)
                 return CAT_CMD_STATE_NOT_MATCH;
 
         return s;
@@ -408,7 +413,7 @@ static cat_status update_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        struct cat_command const *cmd = &self->desc->cmd[self->index];
+        struct cat_command const *cmd = get_command_by_index(self, self->index);
         size_t cmd_name_len;
 
         if (get_cmd_state(self, self->index) != CAT_CMD_STATE_NOT_MATCH) {
@@ -513,9 +518,9 @@ static cat_status search_command(struct cat_object *self)
                                 self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                                 return CAT_STATUS_BUSY;
                         }
-                        self->cmd = &self->desc->cmd[self->index];
+                        self->cmd = get_command_by_index(self, self->index);
                 } else if (cmd_state == CAT_CMD_STATE_FULL_MATCH) {
-                        self->cmd = &self->desc->cmd[self->index];
+                        self->cmd = get_command_by_index(self, self->index);
                         self->state = CAT_STATE_COMMAND_FOUND;
                         return CAT_STATUS_BUSY;
                 }
@@ -1610,7 +1615,7 @@ struct cat_command const* cat_search_command_by_name(struct cat_object *self, co
         assert(name != NULL);
 
         for (i = 0; i < self->commands_num; i++) {
-                cmd = &self->desc->cmd[i];
+                cmd = get_command_by_index(self, i);
                 if (strcmp(cmd->name, name) == 0)
                         return cmd;
         }
