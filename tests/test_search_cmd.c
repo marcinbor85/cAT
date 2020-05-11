@@ -54,12 +54,33 @@ static struct cat_command cmds[] = {
         },
 };
 
+static struct cat_command cmds2[] = {
+        {
+                .name = "APX1",
+                .write = ap_write,
+                .only_test = true
+        },
+        {
+                .name = "APX2",
+                .read = ap_read,
+                .only_test = false
+        },
+};
+
 static char buf[128];
 
 static struct cat_command_group cmd_desc[] = {
         {
+                .name = "std",
+
                 .cmd = cmds,
                 .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+        },
+        {
+                .name = "ext",
+                
+                .cmd = cmds2,
+                .cmd_num = sizeof(cmds2) / sizeof(cmds2[0]),
         }
 };
 
@@ -90,6 +111,7 @@ int main(int argc, char **argv)
 {
 	struct cat_object at;
         struct cat_command const *cmd;
+        struct cat_command_group const *cmd_group;
 
 	cat_init(&at, &desc, &iface, NULL);
 
@@ -101,6 +123,24 @@ int main(int argc, char **argv)
 
         cmd = cat_search_command_by_name(&at, "AP3");
         assert(cmd == NULL);
+
+        cmd = cat_search_command_by_name(&at, "APX1");
+        assert(cmd == &cmds2[0]);
+
+        cmd = cat_search_command_by_name(&at, "APX2");
+        assert(cmd == &cmds2[1]);
+
+        cmd = cat_search_command_by_name(&at, "APX3");
+        assert(cmd == NULL);
+
+        cmd_group = cat_search_command_group_by_name(&at, "std");
+        assert(cmd_group == &cmd_desc[0]);
+
+        cmd_group = cat_search_command_group_by_name(&at, "ext");
+        assert(cmd_group == &cmd_desc[1]);
+
+        cmd_group = cat_search_command_group_by_name(&at, "not");
+        assert(cmd_group == NULL);
 
 	return 0;
 }
