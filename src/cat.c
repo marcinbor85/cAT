@@ -407,15 +407,45 @@ static cat_status parse_command(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static bool is_command_disable(struct cat_object *self, size_t index)
+{
+        size_t i, j;
+        struct cat_command_group const *cmd_group;
+
+        assert(self != NULL);
+        assert(index < self->commands_num);
+
+        j = 0;
+        for (i = 0; i < self->desc->cmd_group_num; i++) {
+                cmd_group = &self->desc->cmd_group[i];
+
+                if (index >= j + cmd_group->cmd_num) {
+                        j += cmd_group->cmd_num;
+                        continue;
+                }
+
+                if (cmd_group->disable != false)
+                        return true;
+
+                if (cmd_group->cmd[index - j].disable != false)
+                        return true;
+        }
+        
+        return false;
+}
+
 static uint8_t get_cmd_state(struct cat_object *self, size_t i)
 {
         uint8_t s;
+
+        assert(self != NULL);
+        assert(i < self->commands_num);
 
         s = self->desc->buf[i >> 2];
         s >>= (i % 4) << 1;
         s &= 0x03;
 
-        if ((get_command_by_index(self, i))->disable != false)
+        if (is_command_disable(self, i) != false)
                 return CAT_CMD_STATE_NOT_MATCH;
 
         return s;
@@ -1645,6 +1675,23 @@ struct cat_command const* cat_search_command_by_name(struct cat_object *self, co
                 cmd = get_command_by_index(self, i);
                 if (strcmp(cmd->name, name) == 0)
                         return cmd;
+        }
+
+        return NULL;
+}
+
+struct cat_command_group const* cat_search_command_group_by_name(struct cat_object *self, const char *name)
+{
+        size_t i;
+        struct cat_command_group const *cmd_group;
+
+        assert(self != NULL);
+        assert(name != NULL);
+
+        for (i = 0; i < self->desc->cmd_group_num; i++) {
+                cmd_group = &self->desc->cmd_group[i];
+                if ((cmd_group->name != NULL) && (strcmp(cmd_group->name, name) == 0))
+                        return cmd_group;
         }
 
         return NULL;

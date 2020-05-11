@@ -236,8 +236,12 @@ struct cat_command {
 };
 
 struct cat_command_group {
+        const char *name; /* command group name (optional, for identification purpose) */
+
         struct cat_command const *cmd; /* pointer to array of commands descriptor */
         size_t cmd_num; /* number of commands in array */
+
+        bool disable; /* flag to completely disable all commands in group */
 };
 
 /* structure with at command parser descriptor */
@@ -385,6 +389,15 @@ cat_status cat_hold_exit(struct cat_object *self, cat_status status);
  * @return pointer to command object, NULL if command not found
  */
 struct cat_command const* cat_search_command_by_name(struct cat_object *self, const char *name);
+
+/**
+ * Function used to searching registered command group by its name.
+ * 
+ * @param self pointer to at command parser object
+ * @param name command group name to search
+ * @return pointer to command group object, NULL if command group not found
+ */
+struct cat_command_group const* cat_search_command_group_by_name(struct cat_object *self, const char *name);
 
 #ifdef __cplusplus
 }

@@ -174,5 +174,20 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(run_results, " AP:AP AP:AP") == 0);
 
+        struct cat_command_group *cmd_group;
+        cmd_group = (struct cat_command_group*)cat_search_command_group_by_name(&at, "standard");
+        assert(cmd_group == NULL);
+
+        cmd_desc[0].name = "standard";
+        cmd_group = (struct cat_command_group*)cat_search_command_group_by_name(&at, "standard");
+        assert(cmd_group == &cmd_desc[0]);
+        cmd_group->disable = true;
+
+        prepare_input("\nATA\n\nATAP\n\nAT+TEST\n");
+        while (cat_service(&at) != 0) {};
+
+        assert(strcmp(ack_results, "\nERROR\n\nERROR\n\nERROR\n") == 0);
+        assert(strcmp(run_results, "") == 0);
+
 	return 0;
 }
