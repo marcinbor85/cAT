@@ -229,14 +229,25 @@ struct cat_command {
 
         struct cat_variable const *var; /* pointer to array of variables assiocated with this command */
         size_t var_num; /* number of variables in array */
+
         bool need_all_vars; /* flag to need all vars parsing */
         bool only_test; /* flag to disable read/write/run commands (only test auto description) */
+        bool disable; /* flag to completely disable command */
+};
+
+struct cat_command_group {
+        const char *name; /* command group name (optional, for identification purpose) */
+
+        struct cat_command const *cmd; /* pointer to array of commands descriptor */
+        size_t cmd_num; /* number of commands in array */
+
+        bool disable; /* flag to completely disable all commands in group */
 };
 
 /* structure with at command parser descriptor */
 struct cat_descriptor {
-        struct cat_command const *cmd; /* pointer to array of commands descriptor */
-        size_t cmd_num; /* number of commands in array */
+        struct cat_command_group const *cmd_group; /* pointer to array of commands group descriptor */
+        size_t cmd_group_num; /* number of commands group in array */
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
@@ -252,6 +263,7 @@ struct cat_object {
         size_t length; /* length of input command name and command arguments */
         size_t position; /* position of actually parsed char in arguments string */
         size_t write_size; /* size of parsed buffer hex or buffer string */
+        size_t commands_num; /* computed total number of registered commands */
 
         struct cat_command const *cmd; /* pointer to current command descriptor */
         struct cat_variable const *var; /* pointer to current variable descriptor */
@@ -267,8 +279,8 @@ struct cat_object {
         int write_state; /* before, data, after flush io write state */
         cat_state write_state_after; /* parser state to set after flush io write */
 
-        struct cat_command const *unsolicited_read_cmd; /* pointer to command used to unsolicited read */
-        struct cat_command const *unsolicited_test_cmd; /* pointer to command used to unsolicited test */
+        struct cat_command const *unsolicited_buffer_cmd; /* pointer to command used to unsolicited event */
+        cat_cmd_type unsolicited_buffer_cmd_type; /* type of unsolicited event */
 };
 
 /**
@@ -316,6 +328,29 @@ cat_status cat_is_busy(struct cat_object *self);
 cat_status cat_is_hold(struct cat_object *self);
 
 /**
+ * Function return flag which indicating state of internal buffer of unsolicited events.
+ * 
+ * @param self pointer to at command parser object
+ * @return CAT_STATUS_OK - buffer is not full, unsolicited event can be buffered
+ *         CAT_STATUS_ERROR_BUFFER_FULL - buffer is full, unsolicited event cannot be buffered
+ *         CAT_STATUS_ERROR_MUTEX_LOCK - cannot lock mutex error
+ *         CAT_STATUS_ERROR_MUTEX_UNLOCK - cannot unlock mutex error
+ */
+cat_status cat_is_unsolicited_buffer_full(struct cat_object *self);
+
+/**
+ * Function sends unsolicited event message.
+ * Command message is buffered inside parser in 1-level deep buffer and processed in cat_service context.
+ * Only command pointer is buffered, so command struct should be static or global until be fully processed.
+ * 
+ * @param self pointer to at command parser object
+ * @param cmd pointer to command structure regarding which unsolicited event applies to
+ * @param type type of operation (only CAT_CMD_TYPE_READ and CAT_CMD_TYPE_TEST are allowed)
+ * @return according to cat_return_state enum definitions
+ */
+cat_status cat_trigger_unsolicited_event(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type);
+
+/**
  * Function sends unsolicited read event message.
  * Command message is buffered inside parser in 1-level deep buffer and processed in cat_service context.
  * Only command pointer is buffered, so command struct should be static or global until be fully processed.
@@ -354,6 +389,25 @@ cat_status cat_hold_exit(struct cat_object *self, cat_status status);
  * @return pointer to command object, NULL if command not found
  */
 struct cat_command const* cat_search_command_by_name(struct cat_object *self, const char *name);
+
+/**
+ * Function used to searching registered command group by its name.
+ * 
+ * @param self pointer to at command parser object
+ * @param name command group name to search
+ * @return pointer to command group object, NULL if command group not found
+ */
+struct cat_command_group const* cat_search_command_group_by_name(struct cat_object *self, const char *name);
+
+/**
+ * Function used to searching attached variable to command its name.
+ * 
+ * @param self pointer to at command parser object
+ * @param cmd pointer to command in which variable will be searched
+ * @param name variable name to search
+ * @return pointer to command group object, NULL if command group not found
+ */
+struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, struct cat_command const *cmd, const char *name);
 
 #ifdef __cplusplus
 }

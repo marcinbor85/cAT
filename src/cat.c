@@ -97,6 +97,28 @@ cat_status cat_is_hold(struct cat_object *self)
         return s;
 }
 
+static cat_status is_unsolicited_buffer_full(struct cat_object *self)
+{
+        return (self->unsolicited_buffer_cmd == NULL) ? CAT_STATUS_OK : CAT_STATUS_ERROR_BUFFER_FULL;
+}
+
+cat_status cat_is_unsolicited_buffer_full(struct cat_object *self)
+{
+        cat_status s;
+
+        assert(self != NULL);
+
+        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_LOCK;
+
+        s = is_unsolicited_buffer_full(self);
+
+        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
+                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
+
+        return s;
+}
+
 static const char *get_new_line_chars(struct cat_object *self)
 {
         static const char *crlf = "\r\n";
@@ -168,30 +190,63 @@ static int read_cmd_char(struct cat_object *self)
         return 1;
 }
 
+static struct cat_command const* get_command_by_index(struct cat_object *self, size_t index)
+{
+        size_t i, j;
+        struct cat_command_group const *cmd_group;
+
+        assert(self != NULL);
+        assert(index < self->commands_num);
+
+        j = 0;
+        for (i = 0; i < self->desc->cmd_group_num; i++) {
+                cmd_group = &self->desc->cmd_group[i];
+
+                if (index >= j + cmd_group->cmd_num) {
+                        j += cmd_group->cmd_num;
+                        continue;
+                }
+                
+                return &cmd_group->cmd[index - j];
+        }
+        
+        return NULL;
+}
+
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex)
 {
-        size_t i;
+        size_t i, j;
+        struct cat_command_group const *cmd_group;
 
         assert(self != NULL);
         assert(desc != NULL);
         assert(io != NULL);
 
-        assert(desc->cmd != NULL);
-        assert(desc->cmd_num > 0);
+        assert(desc->cmd_group != NULL);
+        assert(desc->cmd_group_num > 0);
+
+        self->commands_num = 0;
+        for (i = 0; i < desc->cmd_group_num; i++) {
+                cmd_group = &desc->cmd_group[i];
+
+                assert(cmd_group->cmd != NULL);
+                assert(cmd_group->cmd_num > 0);
+
+                self->commands_num += cmd_group->cmd_num;
+
+                for (j = 0; j < cmd_group->cmd_num; j++)
+                        assert(cmd_group->cmd[j].name != NULL);
+        }
 
         assert(desc->buf != NULL);
-        assert(desc->buf_size * 4U >= desc->cmd_num);
+        assert(desc->buf_size * 4U >= self->commands_num);
 
         self->desc = desc;
         self->io = io;
         self->mutex = mutex;
-        self->unsolicited_read_cmd = NULL;
-        self->unsolicited_test_cmd = NULL;
+        self->unsolicited_buffer_cmd = NULL;
         self->hold_state_flag = false;
         self->hold_exit_status = 0;
-
-        for (i = 0; i < self->desc->cmd_num; i++)
-                assert(self->desc->cmd[i].name != NULL);
 
         reset_state(self);
 }
@@ -352,13 +407,46 @@ static cat_status parse_command(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static bool is_command_disable(struct cat_object *self, size_t index)
+{
+        size_t i, j;
+        struct cat_command_group const *cmd_group;
+
+        assert(self != NULL);
+        assert(index < self->commands_num);
+
+        j = 0;
+        for (i = 0; i < self->desc->cmd_group_num; i++) {
+                cmd_group = &self->desc->cmd_group[i];
+
+                if (index >= j + cmd_group->cmd_num) {
+                        j += cmd_group->cmd_num;
+                        continue;
+                }
+
+                if (cmd_group->disable != false)
+                        return true;
+
+                if (cmd_group->cmd[index - j].disable != false)
+                        return true;
+        }
+        
+        return false;
+}
+
 static uint8_t get_cmd_state(struct cat_object *self, size_t i)
 {
         uint8_t s;
 
+        assert(self != NULL);
+        assert(i < self->commands_num);
+
         s = self->desc->buf[i >> 2];
         s >>= (i % 4) << 1;
         s &= 0x03;
+
+        if (is_command_disable(self, i) != false)
+                return CAT_CMD_STATE_NOT_MATCH;
 
         return s;
 }
@@ -382,7 +470,7 @@ static cat_status update_command(struct cat_object *self)
 {
         assert(self != NULL);
 
-        struct cat_command const *cmd = &self->desc->cmd[self->index];
+        struct cat_command const *cmd = get_command_by_index(self, self->index);
         size_t cmd_name_len;
 
         if (get_cmd_state(self, self->index) != CAT_CMD_STATE_NOT_MATCH) {
@@ -397,7 +485,7 @@ static cat_status update_command(struct cat_object *self)
                 }
         }
 
-        if (++self->index >= self->desc->cmd_num) {
+        if (++self->index >= self->commands_num) {
                 self->index = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_CHAR;
         }
@@ -487,15 +575,15 @@ static cat_status search_command(struct cat_object *self)
                                 self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                                 return CAT_STATUS_BUSY;
                         }
-                        self->cmd = &self->desc->cmd[self->index];
+                        self->cmd = get_command_by_index(self, self->index);
                 } else if (cmd_state == CAT_CMD_STATE_FULL_MATCH) {
-                        self->cmd = &self->desc->cmd[self->index];
+                        self->cmd = get_command_by_index(self, self->index);
                         self->state = CAT_STATE_COMMAND_FOUND;
                         return CAT_STATUS_BUSY;
                 }
         }
 
-        if (++self->index >= self->desc->cmd_num) {
+        if (++self->index >= self->commands_num) {
                 if (self->cmd == NULL) {
                         self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                 } else {
@@ -1298,99 +1386,62 @@ static cat_status parse_command_args(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd)
+cat_status cat_trigger_unsolicited_event(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type)
 {
         cat_status s;
 
         assert(self != NULL);
         assert(cmd != NULL);
+        assert(((type == CAT_CMD_TYPE_READ) || (type == CAT_CMD_TYPE_TEST)));
 
         if ((self->mutex != NULL) && (self->mutex->lock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_LOCK;
 
-        if (self->unsolicited_read_cmd == NULL) {
-                self->unsolicited_read_cmd = cmd;
-                s = CAT_STATUS_OK;
-        } else {
-                s = CAT_STATUS_ERROR_BUFFER_FULL;
+        s = is_unsolicited_buffer_full(self);
+        if (s == CAT_STATUS_OK) {
+                self->unsolicited_buffer_cmd = cmd;
+                self->unsolicited_buffer_cmd_type = type;
         }
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;
 
         return s;
+}
+
+cat_status cat_trigger_unsolicited_read(struct cat_object *self, struct cat_command const *cmd)
+{
+        return cat_trigger_unsolicited_event(self, cmd, CAT_CMD_TYPE_READ);
 }
 
 cat_status cat_trigger_unsolicited_test(struct cat_object *self, struct cat_command const *cmd)
 {
-        cat_status s;
-
-        assert(self != NULL);
-        assert(cmd != NULL);
-
-        if ((self->mutex != NULL) && (self->mutex->lock() != 0))
-                return CAT_STATUS_ERROR_MUTEX_LOCK;
-
-        if (self->unsolicited_test_cmd == NULL) {
-                self->unsolicited_test_cmd = cmd;
-                s = CAT_STATUS_OK;
-        } else {
-                s = CAT_STATUS_ERROR_BUFFER_FULL;
-        }
-
-        if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
-                return CAT_STATUS_ERROR_MUTEX_UNLOCK;
-
-        return s;
-}
-
-static cat_status check_unsolicited_read_buffer(struct cat_object *self)
-{
-        assert(self != NULL);
-
-        if (self->unsolicited_read_cmd == NULL)
-                return CAT_STATUS_OK;
-
-        self->cmd = self->unsolicited_read_cmd;
-        self->unsolicited_read_cmd = NULL;
-        self->disable_ack = true;
-
-        start_processing_format_read_args(self);
-
-        return CAT_STATUS_BUSY;
-}
-
-static cat_status check_unsolicited_test_buffer(struct cat_object *self)
-{
-        assert(self != NULL);
-
-        if (self->unsolicited_test_cmd == NULL)
-                return CAT_STATUS_OK;
-
-        self->cmd = self->unsolicited_test_cmd;
-        self->unsolicited_test_cmd = NULL;
-        self->disable_ack = true;
-
-        start_processing_format_test_args(self);
-
-        return CAT_STATUS_BUSY;
+        return cat_trigger_unsolicited_event(self, cmd, CAT_CMD_TYPE_TEST);
 }
 
 static cat_status check_unsolicited_buffers(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
 
-        s = check_unsolicited_read_buffer(self);
-        if (s != CAT_STATUS_OK)
-                return s;
-        
-        s = check_unsolicited_test_buffer(self);
-        if (s != CAT_STATUS_OK)
-                return s;
+        if (is_unsolicited_buffer_full(self) == CAT_STATUS_OK)
+                return CAT_STATUS_OK;
 
-        return CAT_STATUS_OK;
+        self->cmd = self->unsolicited_buffer_cmd;
+        self->unsolicited_buffer_cmd = NULL;
+        self->disable_ack = true;
+
+        switch (self->unsolicited_buffer_cmd_type) {
+        case CAT_CMD_TYPE_READ:
+                start_processing_format_read_args(self);
+                break;
+        case CAT_CMD_TYPE_TEST:
+                start_processing_format_test_args(self);
+                break;
+        default:
+                return CAT_STATUS_OK;
+        }
+
+        return CAT_STATUS_BUSY;
 }
 
 static cat_status process_idle_state(struct cat_object *self)
@@ -1620,10 +1671,45 @@ struct cat_command const* cat_search_command_by_name(struct cat_object *self, co
         assert(self != NULL);
         assert(name != NULL);
 
-        for (i = 0; i < self->desc->cmd_num; i++) {
-                cmd = &self->desc->cmd[i];
+        for (i = 0; i < self->commands_num; i++) {
+                cmd = get_command_by_index(self, i);
                 if (strcmp(cmd->name, name) == 0)
                         return cmd;
+        }
+
+        return NULL;
+}
+
+struct cat_command_group const* cat_search_command_group_by_name(struct cat_object *self, const char *name)
+{
+        size_t i;
+        struct cat_command_group const *cmd_group;
+
+        assert(self != NULL);
+        assert(name != NULL);
+
+        for (i = 0; i < self->desc->cmd_group_num; i++) {
+                cmd_group = &self->desc->cmd_group[i];
+                if ((cmd_group->name != NULL) && (strcmp(cmd_group->name, name) == 0))
+                        return cmd_group;
+        }
+
+        return NULL;
+}
+
+struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, struct cat_command const *cmd, const char *name)
+{
+        size_t i;
+        struct cat_variable const *var;
+
+        assert(self != NULL);
+        assert(cmd != NULL);
+        assert(name != NULL);
+
+        for (i = 0; i < cmd->var_num; i++) {
+                var = &cmd->var[i];
+                if ((var->name != NULL) && (strcmp(var->name, name) == 0))
+                        return var;
         }
 
         return NULL;
@@ -1750,7 +1836,7 @@ cat_status cat_service(struct cat_object *self)
                 break;
         }
 
-        if ((self->unsolicited_read_cmd != NULL) || (self->unsolicited_test_cmd != NULL))
+        if (self->unsolicited_buffer_cmd != NULL)
                 s = CAT_STATUS_BUSY;
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))

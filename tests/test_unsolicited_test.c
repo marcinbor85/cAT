@@ -107,9 +107,16 @@ static struct cat_command u_cmds[] = {
 
 static char buf[128];
 
+static struct cat_command_group cmd_desc[] = {
+        {
+                .cmd = cmds,
+                .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+        }
+};
+
 static struct cat_descriptor desc = {
-        .cmd = cmds,
-        .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+        .cmd_group = cmd_desc,
+        .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]),
 
         .buf = buf,
         .buf_size = sizeof(buf)
@@ -162,8 +169,12 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_1);
 
-        s = cat_trigger_unsolicited_test(&at, &u_cmds[0]);
+        s = cat_is_unsolicited_buffer_full(&at);
         assert(s == CAT_STATUS_OK);
+        s = cat_trigger_unsolicited_event(&at, &u_cmds[0], CAT_CMD_TYPE_TEST);
+        assert(s == CAT_STATUS_OK);
+        s = cat_is_unsolicited_buffer_full(&at);
+        assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
         s = cat_trigger_unsolicited_test(&at, &u_cmds[1]);
         assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
 

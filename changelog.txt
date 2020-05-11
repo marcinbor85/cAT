@@ -1,6 +1,15 @@
 TODO:
 - differentation of variables for read and write commands
 - help command (printing all commands posibilities with descriptions)
+- documentation updated (buffer sized, return enum types, write variable nums, buf size hints)
+- helper setters and getters for variables
+
+0.7.0
+* function for checking unsolicited buffer
+* some refactoring regarding unsolicited buffer
+* helper function cat_search_variable_by_name added
+* commands group with searching feature added
+* disable feature for commands and groups added
 
 0.6.0
 * async non blocking io->write
