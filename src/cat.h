@@ -229,6 +229,7 @@ struct cat_command {
 
         struct cat_variable const *var; /* pointer to array of variables assiocated with this command */
         size_t var_num; /* number of variables in array */
+
         bool need_all_vars; /* flag to need all vars parsing */
         bool only_test; /* flag to disable read/write/run commands (only test auto description) */
         bool disable; /* flag to completely disable command */
@@ -253,6 +254,7 @@ struct cat_object {
         size_t length; /* length of input command name and command arguments */
         size_t position; /* position of actually parsed char in arguments string */
         size_t write_size; /* size of parsed buffer hex or buffer string */
+        size_t commands_num; /* computed total number of registered commands */
 
         struct cat_command const *cmd; /* pointer to current command descriptor */
         struct cat_variable const *var; /* pointer to current variable descriptor */

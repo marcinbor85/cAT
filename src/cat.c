@@ -201,8 +201,10 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         assert(desc->cmd != NULL);
         assert(desc->cmd_num > 0);
 
+        self->commands_num = desc->cmd_num;
+
         assert(desc->buf != NULL);
-        assert(desc->buf_size * 4U >= desc->cmd_num);
+        assert(desc->buf_size * 4U >= self->commands_num);
 
         self->desc = desc;
         self->io = io;
@@ -211,7 +213,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->hold_state_flag = false;
         self->hold_exit_status = 0;
 
-        for (i = 0; i < self->desc->cmd_num; i++)
+        for (i = 0; i < self->commands_num; i++)
                 assert(self->desc->cmd[i].name != NULL);
 
         reset_state(self);
@@ -421,7 +423,7 @@ static cat_status update_command(struct cat_object *self)
                 }
         }
 
-        if (++self->index >= self->desc->cmd_num) {
+        if (++self->index >= self->commands_num) {
                 self->index = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_CHAR;
         }
@@ -519,7 +521,7 @@ static cat_status search_command(struct cat_object *self)
                 }
         }
 
-        if (++self->index >= self->desc->cmd_num) {
+        if (++self->index >= self->commands_num) {
                 if (self->cmd == NULL) {
                         self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                 } else {
@@ -1607,7 +1609,7 @@ struct cat_command const* cat_search_command_by_name(struct cat_object *self, co
         assert(self != NULL);
         assert(name != NULL);
 
-        for (i = 0; i < self->desc->cmd_num; i++) {
+        for (i = 0; i < self->commands_num; i++) {
                 cmd = &self->desc->cmd[i];
                 if (strcmp(cmd->name, name) == 0)
                         return cmd;
