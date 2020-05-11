@@ -41,11 +41,37 @@ static int ap_write(const struct cat_command *cmd, const uint8_t *data, const si
         return 0;
 }
 
+static struct cat_variable vars_ap1[] = {
+        {
+                .name = "var_ap1_1"
+        },
+        {
+                .name = "var_ap1_2"
+        },
+        {
+                .name = "var_ap1_3"
+        }
+};
+
+static struct cat_variable vars_apx2[] = {
+        {
+                .name = "var_apx2_1"
+        },
+        {
+                .name = "var_apx2_2"
+        },
+        {
+                .name = "var_apx2_3"
+        }
+};
+
 static struct cat_command cmds[] = {
         {
                 .name = "AP1",
                 .write = ap_write,
-                .only_test = true
+                .only_test = true,
+                .var = vars_ap1,
+                .var_num = sizeof(vars_ap1) / sizeof(vars_ap1[0])
         },
         {
                 .name = "AP2",
@@ -63,7 +89,9 @@ static struct cat_command cmds2[] = {
         {
                 .name = "APX2",
                 .read = ap_read,
-                .only_test = false
+                .only_test = false,
+                .var = vars_apx2,
+                .var_num = sizeof(vars_apx2) / sizeof(vars_apx2[0])
         },
 };
 
@@ -112,6 +140,7 @@ int main(int argc, char **argv)
 	struct cat_object at;
         struct cat_command const *cmd;
         struct cat_command_group const *cmd_group;
+        struct cat_variable const *var;
 
 	cat_init(&at, &desc, &iface, NULL);
 
@@ -141,6 +170,36 @@ int main(int argc, char **argv)
 
         cmd_group = cat_search_command_group_by_name(&at, "not");
         assert(cmd_group == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "var_ap1_1");
+        assert(var == &vars_ap1[0]);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "var_ap1_2");
+        assert(var == &vars_ap1[1]);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "var_ap1_3");
+        assert(var == &vars_ap1[2]);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "var_ap1_4");
+        assert(var == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds[1], "var_ap1_1");
+        assert(var == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds2[1], "var_apx2_1");
+        assert(var == &vars_apx2[0]);
+
+        var = cat_search_variable_by_name(&at, &cmds2[1], "var_apx2_2");
+        assert(var == &vars_apx2[1]);
+
+        var = cat_search_variable_by_name(&at, &cmds2[1], "var_apx2_3");
+        assert(var == &vars_apx2[2]);
+
+        var = cat_search_variable_by_name(&at, &cmds2[1], "var_apx2_4");
+        assert(var == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds2[0], "var_apx2_1");
+        assert(var == NULL);
 
 	return 0;
 }

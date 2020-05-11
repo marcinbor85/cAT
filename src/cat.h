@@ -399,6 +399,16 @@ struct cat_command const* cat_search_command_by_name(struct cat_object *self, co
  */
 struct cat_command_group const* cat_search_command_group_by_name(struct cat_object *self, const char *name);
 
+/**
+ * Function used to searching attached variable to command its name.
+ * 
+ * @param self pointer to at command parser object
+ * @param cmd pointer to command in which variable will be searched
+ * @param name variable name to search
+ * @return pointer to command group object, NULL if command group not found
+ */
+struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, struct cat_command const *cmd, const char *name);
+
 #ifdef __cplusplus
 }
 #endif

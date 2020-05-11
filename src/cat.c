@@ -1697,6 +1697,24 @@ struct cat_command_group const* cat_search_command_group_by_name(struct cat_obje
         return NULL;
 }
 
+struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, struct cat_command const *cmd, const char *name)
+{
+        size_t i;
+        struct cat_variable const *var;
+
+        assert(self != NULL);
+        assert(cmd != NULL);
+        assert(name != NULL);
+
+        for (i = 0; i < cmd->var_num; i++) {
+                var = &cmd->var[i];
+                if ((var->name != NULL) && (strcmp(var->name, name) == 0))
+                        return var;
+        }
+
+        return NULL;
+}
+
 static cat_status process_io_write(struct cat_object *self)
 {
         char ch = self->write_buf[self->position];
