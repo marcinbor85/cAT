@@ -246,7 +246,7 @@ struct cat_command_group {
 
 /* structure with at command parser descriptor */
 struct cat_descriptor {
-        struct cat_command_group const *cmd_group; /* pointer to array of commands group descriptor */
+        struct cat_command_group* const *cmd_group; /* pointer to array of commands group descriptor */
         size_t cmd_group_num; /* number of commands group in array */
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */

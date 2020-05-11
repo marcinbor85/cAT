@@ -200,7 +200,7 @@ static struct cat_command const* get_command_by_index(struct cat_object *self, s
 
         j = 0;
         for (i = 0; i < self->desc->cmd_group_num; i++) {
-                cmd_group = &self->desc->cmd_group[i];
+                cmd_group = self->desc->cmd_group[i];
 
                 if (index >= j + cmd_group->cmd_num) {
                         j += cmd_group->cmd_num;
@@ -227,7 +227,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
 
         self->commands_num = 0;
         for (i = 0; i < desc->cmd_group_num; i++) {
-                cmd_group = &desc->cmd_group[i];
+                cmd_group = desc->cmd_group[i];
 
                 assert(cmd_group->cmd != NULL);
                 assert(cmd_group->cmd_num > 0);
@@ -417,7 +417,7 @@ static bool is_command_disable(struct cat_object *self, size_t index)
 
         j = 0;
         for (i = 0; i < self->desc->cmd_group_num; i++) {
-                cmd_group = &self->desc->cmd_group[i];
+                cmd_group = self->desc->cmd_group[i];
 
                 if (index >= j + cmd_group->cmd_num) {
                         j += cmd_group->cmd_num;
@@ -1689,7 +1689,7 @@ struct cat_command_group const* cat_search_command_group_by_name(struct cat_obje
         assert(name != NULL);
 
         for (i = 0; i < self->desc->cmd_group_num; i++) {
-                cmd_group = &self->desc->cmd_group[i];
+                cmd_group = self->desc->cmd_group[i];
                 if ((cmd_group->name != NULL) && (strcmp(cmd_group->name, name) == 0))
                         return cmd_group;
         }

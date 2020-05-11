@@ -151,11 +151,13 @@ Define AT command parser descriptor:
 
 static char working_buf[128]; /* working buffer, must be declared manually */
 
-static struct cat_command_group cmd_group[] = {
-        {
-                .cmd = cmds,
-                .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
-        }
+static struct cat_command_group cmd_group = {
+        .cmd = cmds,
+        .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+};
+
+static struct cat_command_group *cmd_desc[] = {
+        &cmd_group
 };
 
 static struct cat_descriptor desc = {

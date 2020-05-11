@@ -97,19 +97,23 @@ static struct cat_command cmds2[] = {
 
 static char buf[128];
 
-static struct cat_command_group cmd_desc[] = {
-        {
-                .name = "std",
+static struct cat_command_group cmd_group1 = {
+        .name = "std",
 
-                .cmd = cmds,
-                .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
-        },
-        {
-                .name = "ext",
-                
-                .cmd = cmds2,
-                .cmd_num = sizeof(cmds2) / sizeof(cmds2[0]),
-        }
+        .cmd = cmds,
+        .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+};
+
+static struct cat_command_group cmd_group2 = {
+        .name = "ext",
+        
+        .cmd = cmds2,
+        .cmd_num = sizeof(cmds2) / sizeof(cmds2[0]),
+};
+
+static struct cat_command_group *cmd_desc[] = {
+        &cmd_group1,
+        &cmd_group2
 };
 
 static struct cat_descriptor desc = {
@@ -163,10 +167,10 @@ int main(int argc, char **argv)
         assert(cmd == NULL);
 
         cmd_group = cat_search_command_group_by_name(&at, "std");
-        assert(cmd_group == &cmd_desc[0]);
+        assert(cmd_group == cmd_desc[0]);
 
         cmd_group = cat_search_command_group_by_name(&at, "ext");
-        assert(cmd_group == &cmd_desc[1]);
+        assert(cmd_group == cmd_desc[1]);
 
         cmd_group = cat_search_command_group_by_name(&at, "not");
         assert(cmd_group == NULL);

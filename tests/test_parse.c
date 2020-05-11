@@ -78,11 +78,13 @@ static struct cat_command cmds[] = {
 
 static char buf[128];
 
-static struct cat_command_group cmd_desc[] = {
-        {
-                .cmd = cmds,
-                .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
-        }
+static struct cat_command_group cmd_group = {
+        .cmd = cmds,
+        .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+};
+
+static struct cat_command_group *cmd_desc[] = {
+        &cmd_group
 };
 
 static struct cat_descriptor desc = {
@@ -178,9 +180,9 @@ int main(int argc, char **argv)
         cmd_group = (struct cat_command_group*)cat_search_command_group_by_name(&at, "standard");
         assert(cmd_group == NULL);
 
-        cmd_desc[0].name = "standard";
+        cmd_desc[0]->name = "standard";
         cmd_group = (struct cat_command_group*)cat_search_command_group_by_name(&at, "standard");
-        assert(cmd_group == &cmd_desc[0]);
+        assert(cmd_group == cmd_desc[0]);
         cmd_group->disable = true;
 
         prepare_input("\nATA\n\nATAP\n\nAT+TEST\n");

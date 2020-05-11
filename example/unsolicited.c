@@ -189,11 +189,13 @@ static struct cat_command cmds[] = {
 static char buf[128];
 
 /* declaring parser descriptor */
-static struct cat_command_group cmd_desc[] = {
-        {
-                .cmd = cmds,
-                .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
-        }
+static struct cat_command_group cmd_group = {
+        .cmd = cmds,
+        .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+};
+
+static struct cat_command_group *cmd_desc[] = {
+        &cmd_group
 };
 
 static struct cat_descriptor desc = {
