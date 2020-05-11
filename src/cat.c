@@ -192,24 +192,51 @@ static int read_cmd_char(struct cat_object *self)
 
 static struct cat_command const* get_command_by_index(struct cat_object *self, size_t index)
 {
+        size_t i, j;
+        struct cat_command_group const *cmd_group;
+
         assert(self != NULL);
         assert(index < self->commands_num);
+
+        j = 0;
+        for (i = 0; i < self->desc->cmd_group_num; i++) {
+                cmd_group = &self->desc->cmd_group[i];
+
+                if (index >= j + cmd_group->cmd_num) {
+                        j += cmd_group->cmd_num;
+                        continue;
+                }
+                
+                return &cmd_group->cmd[index - j];
+        }
         
-        return &self->desc->cmd[index];
+        return NULL;
 }
 
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex)
 {
-        size_t i;
+        size_t i, j;
+        struct cat_command_group const *cmd_group;
 
         assert(self != NULL);
         assert(desc != NULL);
         assert(io != NULL);
 
-        assert(desc->cmd != NULL);
-        assert(desc->cmd_num > 0);
+        assert(desc->cmd_group != NULL);
+        assert(desc->cmd_group_num > 0);
 
-        self->commands_num = desc->cmd_num;
+        self->commands_num = 0;
+        for (i = 0; i < desc->cmd_group_num; i++) {
+                cmd_group = &desc->cmd_group[i];
+
+                assert(cmd_group->cmd != NULL);
+                assert(cmd_group->cmd_num > 0);
+
+                self->commands_num += cmd_group->cmd_num;
+
+                for (j = 0; j < cmd_group->cmd_num; j++)
+                        assert(cmd_group->cmd[j].name != NULL);
+        }
 
         assert(desc->buf != NULL);
         assert(desc->buf_size * 4U >= self->commands_num);
@@ -220,9 +247,6 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->unsolicited_buffer_cmd = NULL;
         self->hold_state_flag = false;
         self->hold_exit_status = 0;
-
-        for (i = 0; i < self->commands_num; i++)
-                assert(get_command_by_index(self, i)->name != NULL);
 
         reset_state(self);
 }

@@ -92,9 +92,16 @@ static struct cat_command cmds[] = {
 
 static char buf[128];
 
+static struct cat_command_group cmd_desc[] = {
+        {
+                .cmd = cmds,
+                .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+        }
+};
+
 static struct cat_descriptor desc = {
-        .cmd = cmds,
-        .cmd_num = sizeof(cmds) / sizeof(cmds[0]),
+        .cmd_group = cmd_desc,
+        .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]),
 
         .buf = buf,
         .buf_size = sizeof(buf)

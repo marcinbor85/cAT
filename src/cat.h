@@ -235,10 +235,15 @@ struct cat_command {
         bool disable; /* flag to completely disable command */
 };
 
-/* structure with at command parser descriptor */
-struct cat_descriptor {
+struct cat_command_group {
         struct cat_command const *cmd; /* pointer to array of commands descriptor */
         size_t cmd_num; /* number of commands in array */
+};
+
+/* structure with at command parser descriptor */
+struct cat_descriptor {
+        struct cat_command_group const *cmd_group; /* pointer to array of commands group descriptor */
+        size_t cmd_group_num; /* number of commands group in array */
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
