@@ -61,15 +61,18 @@ static int test_run(const struct cat_command *cmd)
 static struct cat_command cmds[] = {
         {
                 .name = "A",
-                .run = a_run
+                .run = a_run,
+                .disable = false,
         },
         {
                 .name = "AP",
-                .run = ap_run
+                .run = ap_run,
+                .disable = false,
         },
         {
                 .name = "+TEST",
-                .run = test_run
+                .run = test_run,
+                .disable = false,
         }
 };
 
@@ -150,6 +153,19 @@ int main(int argc, char **argv)
         assert(cat_is_busy(&at) == 0);
         assert(strcmp(ack_results, "\nOK\n") == 0);
         assert(strcmp(run_results, " +TEST:+TEST") == 0);
+
+        struct cat_command *cmd;
+
+        cmd = (struct cat_command*)cat_search_command_by_name(&at, "A");
+        cmd->disable = true;
+        cmd = (struct cat_command*)cat_search_command_by_name(&at, "+TEST");
+        cmd->disable = true;
+
+        prepare_input("\nATA\n\nATAP\n\nAT+TEST\n");
+        while (cat_service(&at) != 0) {};
+
+        assert(strcmp(ack_results, "\nOK\n\nOK\n\nERROR\n") == 0);
+        assert(strcmp(run_results, " AP:AP AP:AP") == 0);
 
 	return 0;
 }

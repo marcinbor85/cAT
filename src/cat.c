@@ -381,6 +381,9 @@ static uint8_t get_cmd_state(struct cat_object *self, size_t i)
         s >>= (i % 4) << 1;
         s &= 0x03;
 
+        if (self->desc->cmd[i].disable != false)
+                return CAT_CMD_STATE_NOT_MATCH;
+
         return s;
 }
 
