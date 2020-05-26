@@ -12,7 +12,7 @@ include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
 add_library( cat SHARED ${SRC_FILES} )
-set_target_properties( cat PROPERTIES VERSION 0.7.1 SOVERSION 1 )
+set_target_properties( cat PROPERTIES VERSION 0.7.2 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
 install( TARGETS cat DESTINATION lib )
@@ -118,6 +118,10 @@ add_test( test_test_only ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_test_only )
 add_executable( test_search_cmd tests/test_search_cmd.c )
 target_link_libraries( test_search_cmd cat )
 add_test( test_search_cmd ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_search_cmd )
+
+add_executable( test_order tests/test_order.c )
+target_link_libraries( test_order cat )
+add_test( test_order ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_order )
 
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
