@@ -571,7 +571,7 @@ static cat_status search_command(struct cat_object *self)
 
         if (cmd_state != CAT_CMD_STATE_NOT_MATCH) {
                 if (cmd_state == CAT_CMD_STATE_PARTIAL_MATCH) {
-                        if (self->cmd != NULL) {
+                        if ((self->cmd != NULL) && ((self->index + 1) == self->commands_num)) {
                                 self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                                 return CAT_STATUS_BUSY;
                         }
