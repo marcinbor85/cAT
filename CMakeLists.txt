@@ -12,7 +12,7 @@ include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
 add_library( cat SHARED ${SRC_FILES} )
-set_target_properties( cat PROPERTIES VERSION 0.7.2 SOVERSION 1 )
+set_target_properties( cat PROPERTIES VERSION 0.7.3 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
 install( TARGETS cat DESTINATION lib )
@@ -86,6 +86,10 @@ add_test( test_mutex ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_mutex )
 add_executable( test_unsolicited_read tests/test_unsolicited_read.c )
 target_link_libraries( test_unsolicited_read cat )
 add_test( test_unsolicited_read ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_unsolicited_read )
+
+add_executable( test_unsolicited_read_buffer tests/test_unsolicited_read_buffer.c ${SRC_FILES})
+set_target_properties( test_unsolicited_read_buffer PROPERTIES COMPILE_DEFINITIONS "CAT_UNSOLICITED_CMD_BUFFER_SIZE=2" )
+add_test( test_unsolicited_read_buffer ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_unsolicited_read_buffer )
 
 add_executable( test_hold_state tests/test_hold_state.c )
 target_link_libraries( test_hold_state cat )

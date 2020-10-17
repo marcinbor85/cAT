@@ -37,6 +37,11 @@ extern "C" {
 struct cat_command;
 struct cat_variable;
 
+#ifndef CAT_UNSOLICITED_CMD_BUFFER_SIZE
+/* unsolicited command buffer default size (can by override externally during compilation) */
+#define CAT_UNSOLICITED_CMD_BUFFER_SIZE     ((size_t)(1))
+#endif
+
 /* enum type with variable type definitions */
 typedef enum {
         CAT_VAR_INT_DEC = 0, /* decimal encoded signed integer variable */
@@ -48,6 +53,7 @@ typedef enum {
 
 /* enum type with function status */
 typedef enum {
+        CAT_STATUS_ERROR_BUFFER_EMPTY = -7,
         CAT_STATUS_ERROR_NOT_HOLD = -6,
         CAT_STATUS_ERROR_BUFFER_FULL = -5,
         CAT_STATUS_ERROR_UNKNOWN_STATE = -4,
@@ -253,6 +259,12 @@ struct cat_descriptor {
         size_t buf_size; /* working buffer length */
 };
 
+/* strcuture with unsolicited command buffered infos */
+struct cat_unsolicited_cmd {
+        struct cat_command const *cmd; /* pointer to commands used to unsolicited event */
+        cat_cmd_type type; /* type of unsolicited event */
+};
+
 /* structure with main at command parser object */
 struct cat_object {
         struct cat_descriptor const *desc; /* pointer to at command parser descriptor */
@@ -279,8 +291,11 @@ struct cat_object {
         int write_state; /* before, data, after flush io write state */
         cat_state write_state_after; /* parser state to set after flush io write */
 
-        struct cat_command const *unsolicited_buffer_cmd; /* pointer to command used to unsolicited event */
-        cat_cmd_type unsolicited_buffer_cmd_type; /* type of unsolicited event */
+        struct cat_unsolicited_cmd unsolicited_cmd_buffer[CAT_UNSOLICITED_CMD_BUFFER_SIZE]; /* buffer with unsolicited commands used to unsolicited event */
+        size_t unsolicited_cmd_buffer_tail; /* tail index of unsolicited cmd buffer */
+        size_t unsolicited_cmd_buffer_head; /* head index of unsolicited cmd buffer */
+        size_t unsolicited_cmd_buffer_items_count; /* number of unsolicited cmd in buffer */
+        bool process_unsolicited_cmd; /* flag indicating if processing unsolicited cmd is in progress */
 };
 
 /**
