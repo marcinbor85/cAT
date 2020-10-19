@@ -424,6 +424,16 @@ struct cat_command_group const* cat_search_command_group_by_name(struct cat_obje
  */
 struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, struct cat_command const *cmd, const char *name);
 
+/**
+ * Function used to check what command is currently processed.
+ * Function is not protected by mutex mechanism, due to processed cmd may change after function return.
+ * This only matters in multithreaded environments, it does not matter for one thread.
+ * 
+ * @param self pointer to at command parser object
+ * @return pointer to command which is currently processed, NULL if no command is processed
+ */
+struct cat_command const* cat_get_processed_command(struct cat_object *self);
+
 #ifdef __cplusplus
 }
 #endif
