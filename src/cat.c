@@ -50,6 +50,7 @@ static void reset_state(struct cat_object *self)
         } else {
                 self->state = CAT_STATE_HOLD;
         }
+        self->cmd = NULL;
         self->disable_ack = false;
         self->process_unsolicited_cmd = false;
 }
@@ -175,6 +176,11 @@ cat_status cat_is_unsolicited_buffer_full(struct cat_object *self)
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;
 
         return (s != false) ? CAT_STATUS_ERROR_BUFFER_FULL : CAT_STATUS_OK;
+}
+
+struct cat_command const* cat_get_processed_command(struct cat_object *self)
+{
+        return self->cmd;
 }
 
 static const char *get_new_line_chars(struct cat_object *self)
