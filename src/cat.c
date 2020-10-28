@@ -51,6 +51,7 @@ static void reset_state(struct cat_object *self)
                 self->state = CAT_STATE_HOLD;
         }
         self->cmd = NULL;
+        self->cmd_type = CAT_CMD_TYPE_NONE,
         self->disable_ack = false;
         self->process_unsolicited_cmd = false;
 }
@@ -180,7 +181,36 @@ cat_status cat_is_unsolicited_buffer_full(struct cat_object *self)
 
 struct cat_command const* cat_get_processed_command(struct cat_object *self)
 {
+        assert(self != NULL);
+
         return self->cmd;
+}
+
+cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type)
+{
+        assert(self != NULL);
+        assert(cmd != NULL);
+        assert(type < CAT_CMD_TYPE__TOTAL_NUM);
+        
+        size_t num = self->unsolicited_cmd_buffer_items_count;
+        size_t index = self->unsolicited_cmd_buffer_head;
+        cat_status ret = CAT_STATUS_OK;
+        struct cat_unsolicited_cmd *item;
+
+        if ((self->cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (self->cmd_type == type)))
+                ret =  CAT_STATUS_BUSY;
+                
+        while ((num > 0) && (ret == CAT_STATUS_OK)) {
+                item = &self->unsolicited_cmd_buffer[index];
+                if ((item->cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (item->type == type)))
+                        ret = CAT_STATUS_BUSY;
+
+                --num;
+                if (++index >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
+                        index = 0;
+        }
+
+        return ret;
 }
 
 static const char *get_new_line_chars(struct cat_object *self)
@@ -1496,6 +1526,7 @@ static cat_status check_unsolicited_buffers(struct cat_object *self)
 
         self->disable_ack = true;
         self->process_unsolicited_cmd = true;
+        self->cmd_type = type;
 
         switch (type) {
         case CAT_CMD_TYPE_READ:

@@ -205,10 +205,12 @@ typedef enum {
 
 /* enum type with type of command request */
 typedef enum {
-        CAT_CMD_TYPE_RUN = 0,
+        CAT_CMD_TYPE_NONE = -1,
+        CAT_CMD_TYPE_RUN,
         CAT_CMD_TYPE_READ,
         CAT_CMD_TYPE_WRITE,
-        CAT_CMD_TYPE_TEST
+        CAT_CMD_TYPE_TEST,
+        CAT_CMD_TYPE__TOTAL_NUM
 } cat_cmd_type;
 
 /* structure with io interface functions */
@@ -433,6 +435,19 @@ struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, 
  * @return pointer to command which is currently processed, NULL if no command is processed
  */
 struct cat_command const* cat_get_processed_command(struct cat_object *self);
+
+/**
+ * Function return unsolicited event command status.
+ * Function is not protected by mutex mechanism, due to processed cmd may change after function return.
+ * This only matters in multithreaded environments, it does not matter for one thread.
+ * 
+ * @param self pointer to at command parser object
+ * @param cmd pointer to command in which variable will be searched
+ * @param type type of unsolicited event
+ * @return CAT_STATUS_OK - command is not buffered nor processed
+ *         CAT_STATUS_BUSY - command is waiting in buffer or is processed
+ */
+cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type);
 
 #ifdef __cplusplus
 }
