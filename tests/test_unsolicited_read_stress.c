@@ -169,6 +169,10 @@ int main(int argc, char **argv)
 
         cmd = cat_get_processed_command(&at);
         assert(cmd == NULL);
+        s = cat_is_unsolicited_event_buffered(&at, &u_cmds[0], CAT_CMD_TYPE_READ);
+        assert(s == CAT_STATUS_OK);
+        s = cat_is_unsolicited_event_buffered(&at, &u_cmds[0], CAT_CMD_TYPE_NONE);
+        assert(s == CAT_STATUS_OK);
 
         while (events > 0) {
                 s = cat_is_unsolicited_buffer_full(&at);
@@ -180,6 +184,12 @@ int main(int argc, char **argv)
                         events--;
                 } else {
                         assert(cmd == &u_cmds[0]);
+                        s = cat_is_unsolicited_event_buffered(&at, &u_cmds[0], CAT_CMD_TYPE_READ);
+                        assert(s == CAT_STATUS_BUSY);
+                        s = cat_is_unsolicited_event_buffered(&at, &u_cmds[0], CAT_CMD_TYPE_TEST);
+                        assert(s == CAT_STATUS_OK);
+                        s = cat_is_unsolicited_event_buffered(&at, &u_cmds[0], CAT_CMD_TYPE_NONE);
+                        assert(s == CAT_STATUS_BUSY);
                 }
                 s = cat_service(&at);
                 assert(s == CAT_STATUS_BUSY);
