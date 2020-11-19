@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/marcinbor85/cat.svg?branch=master)](https://travis-ci.org/marcinbor85/cat)
 # libcat (cAT)
-Plain C library for parsing AT commands.
+Plain C library for parsing AT commands for use in host devices.
 
 ## Features
 * blazing fast, non-blocking, robust implementation
