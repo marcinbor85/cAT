@@ -110,6 +110,7 @@ typedef enum {
         CAT_RETURN_STATE_HOLD, /* enable hold parser state */
         CAT_RETURN_STATE_HOLD_EXIT_OK, /* exit from hold state with OK response */
         CAT_RETURN_STATE_HOLD_EXIT_ERROR, /* exit from hold state with ERROR response */
+        CAT_RETURN_STATE_PRINT_CMD_LIST_OK, /* print commands list followed by ok acknowledge (only in TEST and RUN) */
 } cat_return_state;
 
 /**
@@ -201,6 +202,7 @@ typedef enum {
         CAT_STATE_AFTER_FLUSH_OK,
         CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS,
         CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS,
+        CAT_STATE_PRINT_CMD,
 } cat_state;
 
 /* enum type with type of command request */

@@ -22,6 +22,7 @@ Plain C library for parsing AT commands for use in host devices.
 * fully asynchronous input/output operations
 * multiplatform and portable
 * asynchronous api with event callbacks
+* print registered commands list feature
 * only two source files
 * wide unit tests
 
