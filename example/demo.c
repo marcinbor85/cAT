@@ -127,6 +127,10 @@ static int quit_run(const struct cat_command *cmd)
         return 0;
 }
 
+static int print_cmd_list(const struct cat_command *cmd)
+{
+        return CAT_RETURN_STATE_PRINT_CMD_LIST_OK;
+}
 
 static struct cat_variable go_vars[] = {
         {
@@ -194,6 +198,10 @@ static struct cat_command cmds[] = {
         {
                 .name = "#TEST",
                 .run = test_run
+        },
+        {
+                .name = "#HELP",
+                .run = print_cmd_list,
         },
         {
                 .name = "#QUIT",

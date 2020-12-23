@@ -46,6 +46,12 @@ static int print_run(const struct cat_command *cmd)
         return 0;
 }
 
+/* run command handler attached to HELP command for printing commands list */
+static int print_cmd_list(const struct cat_command *cmd)
+{
+        return CAT_RETURN_STATE_PRINT_CMD_LIST_OK;
+}
+
 /* run command handler with custom exit mechanism */
 static int quit_run(const struct cat_command *cmd)
 {
@@ -84,6 +90,10 @@ static struct cat_command cmds[] = {
                 .var = print_vars,
                 .var_num = sizeof(print_vars) / sizeof(print_vars[0]),
                 .need_all_vars = true
+        },
+        {
+                .name = "#HELP",
+                .run = print_cmd_list,
         },
         {
                 .name = "#QUIT",

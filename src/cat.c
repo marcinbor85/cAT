@@ -230,6 +230,17 @@ static void start_flush_io_buffer(struct cat_object *self, cat_state state_after
         self->state = CAT_STATE_FLUSH_IO_WRITE;
 }
 
+static void start_flush_io_buffer_raw(struct cat_object *self, cat_state state_after)
+{
+        assert(self != NULL);
+
+        self->position = 0;
+        self->write_buf = (char *)self->desc->buf;
+        self->write_state = CAT_WRITE_STATE_AFTER;
+        self->write_state_after = state_after;
+        self->state = CAT_STATE_FLUSH_IO_WRITE;
+}
+
 static void ack_error(struct cat_object *self)
 {
         assert(self != NULL);
@@ -1595,6 +1606,121 @@ static cat_status hold_exit(struct cat_object *self, cat_status status)
         return s;
 }
 
+static void start_print_cmd_list(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        if (self->commands_num == 0) {
+                ack_ok(self);
+                return;
+        }
+
+        self->index = 0;
+        self->length = 0;
+        self->cmd_type = CAT_CMD_TYPE_NONE;
+        self->state = CAT_STATE_PRINT_CMD;
+}
+
+static bool cmd_list_next_cmd(struct cat_object *self)
+{
+        if (++self->index >= self->commands_num)
+                return false;
+
+        self->length = 0;
+        self->cmd_type = CAT_CMD_TYPE_NONE;
+        self->state = CAT_STATE_PRINT_CMD;
+
+        return true;
+}
+
+static int print_current_cmd_full_name(struct cat_object *self, const char *suffix)
+{
+        if (self->length == 0) {
+                if (print_string_to_buf(self, get_new_line_chars(self)) != 0)
+                        return -1;
+                self->length = 1;
+        }
+        
+        if (print_string_to_buf(self, "AT") != 0)
+                return -1;
+        if (print_string_to_buf(self, self->cmd->name) != 0)
+                return -1;
+        if (print_string_to_buf(self, suffix) != 0)
+                return -1;
+        if (print_string_to_buf(self, get_new_line_chars(self)) != 0)
+                return -1;
+
+        return 0;
+}
+
+static void print_cmd_list(struct cat_object *self)
+{
+        self->cmd = get_command_by_index(self, self->index);
+
+        switch (self->cmd_type) {
+        case CAT_CMD_TYPE_NONE:
+                if (self->cmd->disable != false) {
+                        if (cmd_list_next_cmd(self) == false)
+                                ack_ok(self);
+                        break;
+                }
+
+                self->cmd_type = (self->cmd->only_test != false) ? CAT_CMD_TYPE_TEST : CAT_CMD_TYPE_RUN;
+                break;
+        case CAT_CMD_TYPE_RUN:
+                if (self->cmd->run != NULL) {   
+                        self->position = 0;
+                        if (print_current_cmd_full_name(self, "") != 0) {
+                                ack_error(self);
+                                break;
+                        }
+                        start_flush_io_buffer_raw(self, CAT_STATE_PRINT_CMD);
+                }
+                self->cmd_type = CAT_CMD_TYPE_READ;
+                break;
+        case CAT_CMD_TYPE_READ:
+                if (self->cmd->read != NULL || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {  
+                        self->position = 0;
+                        if (print_current_cmd_full_name(self, "?") != 0) {
+                                ack_error(self);
+                                break;
+                        }
+                        start_flush_io_buffer_raw(self, CAT_STATE_PRINT_CMD);
+                }
+                self->cmd_type = CAT_CMD_TYPE_WRITE;
+                break;
+        case CAT_CMD_TYPE_WRITE:
+                if (self->cmd->write != NULL || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {  
+                        self->position = 0;
+                        if (print_current_cmd_full_name(self, "=") != 0) {
+                                ack_error(self);
+                                break;
+                        }
+                        start_flush_io_buffer_raw(self, CAT_STATE_PRINT_CMD);
+                }
+                self->cmd_type = CAT_CMD_TYPE_TEST;
+                break;
+        case CAT_CMD_TYPE_TEST:
+                if (self->cmd->test != NULL || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {  
+                        self->position = 0;
+                        if (print_current_cmd_full_name(self, "=?") != 0) {
+                                ack_error(self);
+                                break;
+                        }
+                        start_flush_io_buffer_raw(self, CAT_STATE_PRINT_CMD);
+                }
+                self->cmd_type = CAT_CMD_TYPE__TOTAL_NUM;
+                break;
+        case CAT_CMD_TYPE__TOTAL_NUM:
+                if (cmd_list_next_cmd(self) == false)
+                        ack_ok(self);
+                break;
+        default:
+                ack_error(self);
+                break;
+        }
+}
+
 static cat_status process_write_loop(struct cat_object *self)
 {
         assert(self != NULL);
@@ -1613,6 +1739,7 @@ static cat_status process_write_loop(struct cat_object *self)
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
         case CAT_RETURN_STATE_ERROR:
+        case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
         default:
                 ack_error(self);
                 break;
@@ -1635,6 +1762,9 @@ static cat_status process_run_loop(struct cat_object *self)
                 break;
         case CAT_RETURN_STATE_HOLD:
                 enable_hold_state(self);
+                break;
+        case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
+                start_print_cmd_list(self);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
@@ -1675,6 +1805,7 @@ static cat_status process_read_loop(struct cat_object *self)
                 hold_exit(self, CAT_STATUS_ERROR);
                 ack_error(self);
                 break;
+        case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
         case CAT_RETURN_STATE_ERROR:
         default:
                 ack_error(self);
@@ -1711,6 +1842,9 @@ static cat_status process_test_loop(struct cat_object *self)
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
                 hold_exit(self, CAT_STATUS_ERROR);
                 ack_error(self);
+                break;
+        case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
+                start_print_cmd_list(self);
                 break;
         case CAT_RETURN_STATE_ERROR:
         default:
@@ -1927,6 +2061,10 @@ cat_status cat_service(struct cat_object *self)
                 break;
         case CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS:
                 start_processing_format_test_args(self);
+                s = CAT_STATUS_BUSY;
+                break;
+        case CAT_STATE_PRINT_CMD:
+                print_cmd_list(self);
                 s = CAT_STATUS_BUSY;
                 break;
         default:
