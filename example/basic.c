@@ -65,19 +65,22 @@ static struct cat_variable print_vars[] = {
                 .type = CAT_VAR_UINT_DEC,
                 .data = &x,
                 .data_size = sizeof(x),
-                .name = "X"
+                .name = "X",
+                .access = CAT_VAR_ACCESS_READ_WRITE,
         },
         {
                 .type = CAT_VAR_UINT_DEC,
                 .data = &y,
                 .data_size = sizeof(y),
-                .name = "Y"
+                .name = "Y",
+                .access = CAT_VAR_ACCESS_READ_WRITE,
         },
         {
                 .type = CAT_VAR_BUF_STRING,
                 .data = message,
                 .data_size = sizeof(message),
-                .name = "MESSAGE"
+                .name = "MESSAGE",
+                .access = CAT_VAR_ACCESS_READ_WRITE,
         }
 };
 

@@ -162,21 +162,21 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+CMD=<X:INT32>\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\n+CMD=<X:INT32[RW]>\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " test:+CMD") == 0);
 
         ret = CAT_RETURN_STATE_DATA_NEXT;
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+CMD=<X:INT32>\n\n+CMD=<X:INT32>\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\n+CMD=<X:INT32[RW]>\n\n+CMD=<X:INT32[RW]>\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " test:+CMD test:+CMD") == 0);
         
         ret = CAT_RETURN_STATE_NEXT;
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+CMD=<X:INT32>\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\n+CMD=<X:INT32[RW]>\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " test:+CMD test:+CMD") == 0);
 
         ret = CAT_RETURN_STATE_OK;
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+CMD=<X:INT32>\n\n+CMD=<X:INT32>\n\ntest\n\nOK\n") == 0);
+        assert(strcmp(ack_results, "\n+CMD=<X:INT32[RW]>\n\n+CMD=<X:INT32[RW]>\n\ntest\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " test:+CMD test:+CMD test:+CMD test:+CMD test:+CMD") == 0);
 
         ret_error = true;
@@ -199,7 +199,7 @@ int main(int argc, char **argv)
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+CMD=<X:INT32>\n\n+CMD=<X:INT32>\n\ntest\n\nERROR\n") == 0);
+        assert(strcmp(ack_results, "\n+CMD=<X:INT32[RW]>\n\n+CMD=<X:INT32[RW]>\n\ntest\n\nERROR\n") == 0);
         assert(strcmp(cmd_results, " test:+CMD test:+CMD test:+CMD test:+CMD test:+CMD") == 0);
 
 	return 0;
