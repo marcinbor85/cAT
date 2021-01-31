@@ -4,6 +4,9 @@ TODO:
 - documentation updated (buffer sized, return enum types, write variable nums, buf size hints)
 - helper setters and getters for variables
 
+0.9.0
+* variables accessors
+
 0.8.0
 * print commands list feature
 
