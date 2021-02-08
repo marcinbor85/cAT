@@ -12,6 +12,7 @@ Plain C library for parsing AT commands for use in host devices.
 * unsolicited read/test command support
 * hold state for delayed responses for time-consuming tasks
 * high-level memory variables mapping arguments parsing
+* variables accessors (read and write, read only, write only)
 * automatic arguments types validating
 * automatic format test responses for commands with variables
 * CRLF and LF compatible
@@ -40,31 +41,31 @@ sudo make install
 ## Example basic demo posibilities
 
 ```console
-AT+PRINT=?                                      # TEST command
-+PRINT=<X:UINT8>,<Y:UINT8>,<MESSAGE:STRING>     # Automatic response
-Printing something special at (X,Y).            # Automatic response
-OK                                              # Automatic acknowledge
+AT+PRINT=?                                              # TEST command
++PRINT=<X:UINT8[RW]>,<Y:UINT8[RW]>,<MESSAGE:STRING[RW]> # Automatic response
+Printing something special at (X,Y).                    # Automatic response
+OK                                                      # Automatic acknowledge
 
-AT+PRINT?                                       # READ command
-+PRINT=0,0,""                                   # Automatic response
-OK                                              # Automatic acknowledge
+AT+PRINT?                                               # READ command
++PRINT=0,0,""                                           # Automatic response
+OK                                                      # Automatic acknowledge
 
-AT+PRINT=xyz,-2                                 # WRITE command
-ERROR                                           # Automatic acknowledge
+AT+PRINT=xyz,-2                                         # WRITE command
+ERROR                                                   # Automatic acknowledge
 
-AT+PRINT=1,2,"test"                             # WRITE command
-OK                                              # Automatic acknowledge
+AT+PRINT=1,2,"test"                                     # WRITE command
+OK                                                      # Automatic acknowledge
 
-AT+PRINT                                        # RUN command
-some printing at (1,2) with text "test"         # Manual response
-OK                                              # Automatic acknowledge
+AT+PRINT                                                # RUN command
+some printing at (1,2) with text "test"                 # Manual response
+OK                                                      # Automatic acknowledge
 ```
 
 ## Example unsolicited demo posibilities
 
 ```console
 AT+START=?                                              # TEST command
-+START=<MODE:UINT32>                                    # Automatic response
++START=<MODE:UINT32[WO]>                                # Automatic response
 Start scanning after write (0 - wifi, 1 - bluetooth).   # Automatic response
 OK                                                      # Automatic acknowledge
 
@@ -79,7 +80,7 @@ AT+START=1                                              # WRITE command
 OK                                                      # Unsolicited acknowledge
 
 AT+SCAN=?                                               # TEST command
-+SCAN=<RSSI:INT32>,<SSID:STRING>                        # Automatic response
++SCAN=<RSSI:INT32[RO]>,<SSID:STRING[RO]>                # Automatic response
 Scan result record.                                     # Automatic response
 OK                                                      # Automatic acknowledge
 ```
@@ -100,19 +101,22 @@ static struct cat_variable go_vars[] = {
                 .data = &x,
                 .data_size = sizeof(x),
                 .write = x_write,
-                .name = "X"
+                .name = "X",
+                .access = CAT_VAR_ACCESS_READ_WRITE,
         },
         {
                 .type = CAT_VAR_UINT_DEC, /* unsigned int variable */
                 .data = &y,
                 .data_size = sizeof(y),
-                .write = y_write
+                .write = y_write,
+                .access = CAT_VAR_ACCESS_READ_WRITE,
         },
         {
                 .type = CAT_VAR_BUF_STRING, /* string variable */
                 .data = msg,
                 .data_size = sizeof(msg),
-                .write = msg_write
+                .write = msg_write,
+                .access = CAT_VAR_ACCESS_READ_WRITE,
         }
 };
 ```

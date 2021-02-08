@@ -12,7 +12,7 @@ include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
 add_library( cat SHARED ${SRC_FILES} )
-set_target_properties( cat PROPERTIES VERSION 0.8.1 SOVERSION 1 )
+set_target_properties( cat PROPERTIES VERSION 0.9.0 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
 install( TARGETS cat DESTINATION lib )
@@ -134,6 +134,10 @@ add_test( test_order ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_order )
 add_executable( test_cmd_list tests/test_cmd_list.c )
 target_link_libraries( test_cmd_list cat )
 add_test( test_cmd_list ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_cmd_list )
+
+add_executable( test_var_access tests/test_var_access.c )
+target_link_libraries( test_var_access cat )
+add_test( test_var_access ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_var_access )
 
 add_executable( test_shortcuts tests/test_shortcuts.c )
 target_link_libraries( test_shortcuts cat )
