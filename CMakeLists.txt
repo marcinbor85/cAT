@@ -139,6 +139,10 @@ add_executable( test_var_access tests/test_var_access.c )
 target_link_libraries( test_var_access cat )
 add_test( test_var_access ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_var_access )
 
+add_executable( test_shortcuts tests/test_shortcuts.c )
+target_link_libraries( test_shortcuts cat )
+add_test( test_shortcuts ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_shortcuts )
+
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
 add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
 add_custom_target( uninstall COMMAND xargs rm < install_manifest.txt )
