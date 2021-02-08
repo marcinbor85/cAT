@@ -148,6 +148,12 @@ int main(int argc, char **argv)
 
 	cat_init(&at, &desc, &iface, NULL);
 
+        cmd = cat_search_command_by_name(&at, "A");
+        assert(cmd == NULL);
+
+        cmd = cat_search_command_by_name(&at, "AP");
+        assert(cmd == NULL);
+
         cmd = cat_search_command_by_name(&at, "AP1");
         assert(cmd == &cmds[0]);
 
@@ -174,6 +180,15 @@ int main(int argc, char **argv)
 
         cmd_group = cat_search_command_group_by_name(&at, "not");
         assert(cmd_group == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "v");
+        assert(var == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "var_ap");
+        assert(var == NULL);
+
+        var = cat_search_variable_by_name(&at, &cmds[0], "var_apx2");
+        assert(var == NULL);
 
         var = cat_search_variable_by_name(&at, &cmds[0], "var_ap1_1");
         assert(var == &vars_ap1[0]);

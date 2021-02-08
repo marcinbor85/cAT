@@ -424,12 +424,13 @@ static void prepare_search_command(struct cat_object *self)
         assert(self != NULL);
 
         self->index = 0;
+        self->partial_cntr = 0;
         self->cmd = NULL;
 }
 
 static int is_valid_cmd_name_char(const char ch)
 {
-        return (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '+') || (ch == '#') || (ch == '$') || (ch == '@');
+        return (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '+') || (ch == '#') || (ch == '$') || (ch == '@') || (ch == '_');
 }
 
 static int is_valid_dec_char(const char ch)
@@ -684,6 +685,7 @@ static cat_status search_command(struct cat_object *self)
                                 return CAT_STATUS_BUSY;
                         }
                         self->cmd = get_command_by_index(self, self->index);
+                        self->partial_cntr++;
                 } else if (cmd_state == CAT_CMD_STATE_FULL_MATCH) {
                         self->cmd = get_command_by_index(self, self->index);
                         self->state = CAT_STATE_COMMAND_FOUND;
@@ -695,7 +697,7 @@ static cat_status search_command(struct cat_object *self)
                 if (self->cmd == NULL) {
                         self->state = (self->current_char == '\n') ? CAT_STATE_COMMAND_NOT_FOUND : CAT_STATE_ERROR;
                 } else {
-                        self->state = CAT_STATE_COMMAND_FOUND;
+                        self->state = (self->partial_cntr == 1) ? CAT_STATE_COMMAND_FOUND : CAT_STATE_COMMAND_NOT_FOUND;
                 }
         }
 

@@ -276,6 +276,7 @@ struct cat_object {
         struct cat_mutex_interface const *mutex; /* pointer to at command parser mutex interface */
 
         size_t index; /* index used to iterate over commands and variables */
+        size_t partial_cntr; /* partial match commands counter */
         size_t length; /* length of input command name and command arguments */
         size_t position; /* position of actually parsed char in arguments string */
         size_t write_size; /* size of parsed buffer hex or buffer string */
