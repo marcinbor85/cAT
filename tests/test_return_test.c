@@ -91,6 +91,7 @@ static struct cat_command cmds[] = {
 };
 
 static char buf[128];
+static char unsolicited_buf[128];
 
 static struct cat_command_group cmd_group = {
         .cmd = cmds,
@@ -106,7 +107,9 @@ static struct cat_descriptor desc = {
         .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]),
 
         .buf = buf,
-        .buf_size = sizeof(buf)
+        .buf_size = sizeof(buf),
+        .unsolicited_buf = unsolicited_buf,
+        .unsolicited_buf_size = sizeof(unsolicited_buf),
 };
 
 static int write_char(char ch)
