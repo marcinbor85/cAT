@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 
         while (cat_service(&at) != 0) {};
 
-        assert(strcmp(ack_results, "\n+U1CMD=2\n\n+CMD=1\n\nOK\n\n+U2CMD=3\n") == 0);
+        assert(strcmp(ack_results, "\n+U1CMD=2\n\n+CMD=1\n\n+U2CMD=3\n\nOK\n") == 0);
         assert(strcmp(read_results, " read:+U1CMD read:+CMD read:+U2CMD") == 0);
         assert(strcmp(var_read_results, " var_read:U1 var_read:X var_read:U2") == 0);
 

@@ -184,10 +184,8 @@ int main(int argc, char **argv)
         assert(s == CAT_STATUS_ERROR_BUFFER_FULL);
 
         while (cat_service(&at) != 0) {};
-
-        printf("%s\n", ack_results);
-
-        assert(strcmp(ack_results, "\n+U1CMD=<U1:INT32[RW]>\n\n+CMD=<X:INT32[RW]>\n\nOK\n\n+U2CMD=<U2:INT32[RW]>\n") == 0);
+        
+        assert(strcmp(ack_results, "\n+U1CMD=<U1:INT32[RW]>\n\n+CMD=<X:INT32[RW]>\n\n+U2CMD=<U2:INT32[RW]>\n\nOK\n") == 0);
         assert(strcmp(read_results, " test:+U1CMD test:+CMD test:+U2CMD") == 0);
 
 	return 0;
