@@ -832,7 +832,9 @@ static void start_processing_format_test_args(struct cat_object *self, cat_fsm_t
 
         reset_position(self, fsm);
 
-        if (print_string_to_buf(self, self->cmd->name, fsm) != 0) {
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        if (print_string_to_buf(self, cmd->name, fsm) != 0) {
                 end_processing_with_error(self, fsm);
                 return;
         }
@@ -841,8 +843,6 @@ static void start_processing_format_test_args(struct cat_object *self, cat_fsm_t
                 end_processing_with_error(self, fsm);
                 return;
         }
-
-        struct cat_command *cmd = get_command_by_fsm(self, fsm);
 
         if ((cmd->var != NULL) && (cmd->var_num > 0)) {
                 switch (fsm) {
@@ -2222,17 +2222,14 @@ static cat_status process_read_loop(struct cat_object *self, cat_fsm_type fsm)
                 start_processing_format_read_args(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD:
-                if (fsm == CAT_FSM_TYPE_ATCMD)
-                        enable_hold_state(self);
+                enable_hold_state(self);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
-                if (fsm == CAT_FSM_TYPE_ATCMD)
-                        hold_exit(self, CAT_STATUS_OK);
+                hold_exit(self, CAT_STATUS_OK);
                 end_processing_with_ok(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
-                if (fsm == CAT_FSM_TYPE_ATCMD)
-                        hold_exit(self, CAT_STATUS_ERROR);
+                hold_exit(self, CAT_STATUS_ERROR);
                 end_processing_with_error(self, fsm);
                 break;
         case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
@@ -2299,17 +2296,14 @@ static cat_status process_test_loop(struct cat_object *self, cat_fsm_type fsm)
                 start_processing_format_test_args(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD:
-                if (fsm == CAT_FSM_TYPE_ATCMD)
-                        enable_hold_state(self);
+                enable_hold_state(self);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
-                if (fsm == CAT_FSM_TYPE_ATCMD)
-                        hold_exit(self, CAT_STATUS_OK);
+                hold_exit(self, CAT_STATUS_OK);
                 end_processing_with_ok(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
-                if (fsm == CAT_FSM_TYPE_ATCMD)
-                        hold_exit(self, CAT_STATUS_ERROR);
+                hold_exit(self, CAT_STATUS_ERROR);
                 end_processing_with_error(self, fsm);
                 break;
         case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
