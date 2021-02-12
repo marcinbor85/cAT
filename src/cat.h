@@ -205,6 +205,7 @@ typedef enum {
         CAT_STATE_TEST_LOOP,
         CAT_STATE_RUN_LOOP,
         CAT_STATE_HOLD,
+        CAT_STATE_FLUSH_IO_WRITE_WAIT,
         CAT_STATE_FLUSH_IO_WRITE,
         CAT_STATE_AFTER_FLUSH_RESET,
         CAT_STATE_AFTER_FLUSH_OK,
@@ -286,6 +287,7 @@ typedef enum {
         CAT_UNSOLICITED_STATE_FORMAT_TEST_ARGS,
         CAT_UNSOLICITED_STATE_READ_LOOP,
         CAT_UNSOLICITED_STATE_TEST_LOOP,
+        CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT,
         CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE,        
         CAT_UNSOLICITED_STATE_AFTER_FLUSH_RESET,
         CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK,
@@ -481,9 +483,10 @@ struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, 
  * This only matters in multithreaded environments, it does not matter for one thread.
  * 
  * @param self pointer to at command parser object
+ * @param fsm type of internal state machine to check current command
  * @return pointer to command which is currently processed, NULL if no command is processed
  */
-struct cat_command const* cat_get_processed_command(struct cat_object *self);
+struct cat_command const* cat_get_processed_command(struct cat_object *self, cat_fsm_type fsm);
 
 /**
  * Function return unsolicited event command status.

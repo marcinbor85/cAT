@@ -208,11 +208,29 @@ cat_status cat_is_unsolicited_buffer_full(struct cat_object *self)
         return (s != false) ? CAT_STATUS_ERROR_BUFFER_FULL : CAT_STATUS_OK;
 }
 
-struct cat_command const* cat_get_processed_command(struct cat_object *self)
+static struct cat_command* get_command_by_fsm(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        return self->cmd;
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return (struct cat_command*)self->cmd;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return (struct cat_command*)self->unsolicited_fsm.cmd;
+        default:
+                assert(false);
+        }
+
+        return NULL;
+}
+
+struct cat_command const* cat_get_processed_command(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        return get_command_by_fsm(self, fsm);
 }
 
 cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type)
@@ -256,7 +274,7 @@ static void start_flush_io_buffer(struct cat_object *self, cat_state state_after
         self->write_buf = get_new_line_chars(self);
         self->write_state = CAT_WRITE_STATE_BEFORE;
         self->write_state_after = state_after;
-        self->state = CAT_STATE_FLUSH_IO_WRITE;
+        self->state = CAT_STATE_FLUSH_IO_WRITE_WAIT;
 }
 
 static void unsolicited_start_flush_io_buffer(struct cat_object *self, cat_unsolicited_state state_after)
@@ -267,7 +285,7 @@ static void unsolicited_start_flush_io_buffer(struct cat_object *self, cat_unsol
         self->unsolicited_fsm.write_buf = get_new_line_chars(self);
         self->unsolicited_fsm.write_state = CAT_WRITE_STATE_BEFORE;
         self->unsolicited_fsm.write_state_after = state_after;
-        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE;
+        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT;
 }
 
 static void start_flush_io_buffer_raw(struct cat_object *self, cat_state state_after)
@@ -278,7 +296,7 @@ static void start_flush_io_buffer_raw(struct cat_object *self, cat_state state_a
         self->write_buf = (char *)self->desc->buf;
         self->write_state = CAT_WRITE_STATE_AFTER;
         self->write_state_after = state_after;
-        self->state = CAT_STATE_FLUSH_IO_WRITE;
+        self->state = CAT_STATE_FLUSH_IO_WRITE_WAIT;
 }
 
 static void ack_error(struct cat_object *self)
@@ -591,23 +609,6 @@ static void reset_position(struct cat_object *self, cat_fsm_type fsm)
         default:
                 assert(false);
         }
-}
-
-static struct cat_command* get_command_by_fsm(struct cat_object *self, cat_fsm_type fsm)
-{
-        assert(self != NULL);
-        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
-
-        switch (fsm) {
-        case CAT_FSM_TYPE_ATCMD:
-                return (struct cat_command*)self->cmd;
-        case CAT_FSM_TYPE_UNSOLICITED:
-                return (struct cat_command*)self->unsolicited_fsm.cmd;
-        default:
-                assert(false);
-        }
-
-        return NULL;
 }
 
 static struct cat_variable* get_var_by_fsm(struct cat_object *self, cat_fsm_type fsm)
@@ -2408,6 +2409,22 @@ struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, 
         return NULL;
 }
 
+static cat_status process_io_write_wait(struct cat_object *self)
+{
+        if (self->unsolicited_fsm.state != CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE)
+                self->state = CAT_STATE_FLUSH_IO_WRITE;
+
+        return CAT_STATUS_BUSY;
+}
+
+static cat_status unsolicited_process_io_write_wait(struct cat_object *self)
+{
+        if (self->state != CAT_STATE_FLUSH_IO_WRITE)
+                self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE;
+
+        return CAT_STATUS_BUSY;
+}
+
 static cat_status process_io_write(struct cat_object *self)
 {
         char ch = self->write_buf[self->position];
@@ -2488,6 +2505,9 @@ static cat_status unsolicited_events_service(struct cat_object *self)
         case CAT_UNSOLICITED_STATE_TEST_LOOP:
                 s = process_test_loop(self, CAT_FSM_TYPE_UNSOLICITED);
                 break;
+        case CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT:
+                s = unsolicited_process_io_write_wait(self);
+                break;
         case CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE:
                 s = unsolicited_process_io_write(self);
                 break;
@@ -2522,13 +2542,14 @@ static bool is_unsolicited_fsm_busy(struct cat_object *self)
 cat_status cat_service(struct cat_object *self)
 {
         cat_status s;
+        cat_status unsolicited_stat;
 
         assert(self != NULL);
 
         if ((self->mutex != NULL) && (self->mutex->lock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_LOCK;
 
-        unsolicited_events_service(self);
+        unsolicited_stat = unsolicited_events_service(self);
 
         switch (self->state) {
         case CAT_STATE_ERROR:
@@ -2588,6 +2609,9 @@ cat_status cat_service(struct cat_object *self)
         case CAT_STATE_HOLD:
                 s = process_hold_state(self);
                 break;
+        case CAT_STATE_FLUSH_IO_WRITE_WAIT:
+                s = process_io_write_wait(self);
+                break;
         case CAT_STATE_FLUSH_IO_WRITE:
                 s = process_io_write(self);
                 break;
@@ -2616,7 +2640,7 @@ cat_status cat_service(struct cat_object *self)
                 break;
         }
 
-        if (is_unsolicited_fsm_busy(self) != false) {
+        if ((unsolicited_stat != CAT_STATUS_OK) || (is_unsolicited_fsm_busy(self) != false)) {
                 s = CAT_STATUS_BUSY;
         }
 
