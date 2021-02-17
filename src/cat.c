@@ -42,17 +42,17 @@ static inline char* get_atcmd_buf(struct cat_object *self)
 
 static inline size_t get_atcmd_buf_size(struct cat_object *self)
 {
-        return self->desc->buf_size >> 1;
+        return (self->desc->unsolicited_buf != NULL) ? self->desc->buf_size : self->desc->buf_size >> 1;
 }
 
 static inline char* get_unsolicited_buf(struct cat_object *self)
 {
-        return (char*)&self->desc->buf[self->desc->buf_size >> 1];
+        return (self->desc->unsolicited_buf != NULL) ? (char*)self->desc->unsolicited_buf : (char*)&self->desc->buf[self->desc->buf_size >> 1];
 }
 
 static inline size_t get_unsolicited_buf_size(struct cat_object *self)
 {
-        return self->desc->buf_size >> 1;
+        return (self->desc->unsolicited_buf != NULL) ? self->desc->unsolicited_buf_size : self->desc->buf_size >> 1;
 }
 
 static char to_upper(char ch)
