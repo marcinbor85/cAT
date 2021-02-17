@@ -270,8 +270,6 @@ struct cat_descriptor {
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
-        uint8_t *unsolicited_buf; /* pointer to unsolicited working buffer (used to parse command argument) */
-        size_t unsolicited_buf_size; /* unsolicited working buffer length */
 };
 
 /* strcuture with unsolicited command buffered infos */

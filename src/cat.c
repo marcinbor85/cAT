@@ -35,6 +35,26 @@ SOFTWARE.
 #define CAT_WRITE_STATE_MAIN_BUFFER (1U)
 #define CAT_WRITE_STATE_AFTER (2U)
 
+static inline char* get_atcmd_buf(struct cat_object *self)
+{
+        return (char*)self->desc->buf;
+}
+
+static inline size_t get_atcmd_buf_size(struct cat_object *self)
+{
+        return self->desc->buf_size >> 1;
+}
+
+static inline char* get_unsolicited_buf(struct cat_object *self)
+{
+        return (char*)&self->desc->buf[self->desc->buf_size >> 1];
+}
+
+static inline size_t get_unsolicited_buf_size(struct cat_object *self)
+{
+        return self->desc->buf_size >> 1;
+}
+
 static char to_upper(char ch)
 {
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
@@ -293,7 +313,7 @@ static void start_flush_io_buffer_raw(struct cat_object *self, cat_state state_a
         assert(self != NULL);
 
         self->position = 0;
-        self->write_buf = (char *)self->desc->buf;
+        self->write_buf = get_atcmd_buf(self);
         self->write_state = CAT_WRITE_STATE_AFTER;
         self->write_state_after = state_after;
         self->state = CAT_STATE_FLUSH_IO_WRITE_WAIT;
@@ -303,7 +323,7 @@ static void ack_error(struct cat_object *self)
 {
         assert(self != NULL);
 
-        strncpy((char *)self->desc->buf, "ERROR", self->desc->buf_size);
+        strncpy(get_atcmd_buf(self), "ERROR", get_atcmd_buf_size(self));
         start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
         return;
 }
@@ -312,7 +332,7 @@ static void ack_ok(struct cat_object *self)
 {
         assert(self != NULL);
 
-        strncpy((char *)self->desc->buf, "OK", self->desc->buf_size);
+        strncpy(get_atcmd_buf(self), "OK", get_atcmd_buf_size(self));
         start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
         return;
 }
@@ -324,9 +344,9 @@ static size_t get_left_buffer_space_by_fsm(struct cat_object *self, cat_fsm_type
 
         switch (fsm) {
         case CAT_FSM_TYPE_ATCMD:
-                return self->desc->buf_size - self->position;
+                return get_atcmd_buf_size(self) - self->position;
         case CAT_FSM_TYPE_UNSOLICITED:
-                return self->desc->unsolicited_buf_size - self->unsolicited_fsm.position;
+                return get_unsolicited_buf_size(self) - self->unsolicited_fsm.position;
         default:
                 assert(false);
         }
@@ -334,16 +354,16 @@ static size_t get_left_buffer_space_by_fsm(struct cat_object *self, cat_fsm_type
         return 0;
 }
 
-static uint8_t* get_current_buffer_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+static char* get_current_buffer_by_fsm(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
         switch (fsm) {
         case CAT_FSM_TYPE_ATCMD:
-                return &self->desc->buf[self->position];
+                return &(get_atcmd_buf(self)[self->position]);
         case CAT_FSM_TYPE_UNSOLICITED:
-                return &self->desc->unsolicited_buf[self->unsolicited_fsm.position];
+                return &(get_unsolicited_buf(self)[self->unsolicited_fsm.position]);
         default:
                 assert(false);
         }
@@ -377,7 +397,7 @@ static int print_string_to_buf(struct cat_object *self, const char *str, cat_fsm
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
         len = get_left_buffer_space_by_fsm(self, fsm);
-        written = snprintf((char *)get_current_buffer_by_fsm(self, fsm), len, "%s", str);
+        written = snprintf(get_current_buffer_by_fsm(self, fsm), len, "%s", str);
 
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
@@ -497,7 +517,7 @@ static void prepare_parse_command(struct cat_object *self)
 
         assert(self != NULL);
 
-        memset(self->desc->buf, val, self->desc->buf_size);
+        memset(get_atcmd_buf(self), val, get_atcmd_buf_size(self));
 
         self->index = 0;
         self->length = 0;
@@ -752,7 +772,7 @@ static uint8_t get_cmd_state(struct cat_object *self, size_t i)
         assert(self != NULL);
         assert(i < self->commands_num);
 
-        s = self->desc->buf[i >> 2];
+        s = get_atcmd_buf(self)[i >> 2];
         s >>= (i % 4) << 1;
         s &= 0x03;
 
@@ -771,10 +791,10 @@ static void set_cmd_state(struct cat_object *self, size_t i, uint8_t state)
         n = i >> 2;
         k = ((i % 4) << 1);
 
-        s = self->desc->buf[n];
+        s = get_atcmd_buf(self)[n];
         s &= ~(0x03 << k);
         s |= (state & 0x03) << k;
-        self->desc->buf[n] = s;
+        get_atcmd_buf(self)[n] = s;
 }
 
 static cat_status update_command(struct cat_object *self)
@@ -1002,7 +1022,7 @@ static cat_status command_found(struct cat_object *self)
                 break;
         case CAT_CMD_TYPE_WRITE:
                 self->length = 0;
-                self->desc->buf[0] = 0;
+                get_atcmd_buf(self)[0] = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_ARGS;
                 break;
         default:
@@ -1032,7 +1052,7 @@ static int parse_int_decimal(struct cat_object *self, int64_t *ret)
         int ok = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
 
                 if ((ok != 0) && ((ch == 0) || (ch == ','))) {
                         val *= sign;
@@ -1076,7 +1096,7 @@ static int parse_uint_decimal(struct cat_object *self, uint64_t *ret)
         int ok = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
 
                 if ((ok != 0) && ((ch == 0) || (ch == ','))) {
                         *ret = val;
@@ -1105,7 +1125,7 @@ static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
         int state = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
                 ch = to_upper(ch);
 
                 if ((state >= 3) && ((ch == 0) || (ch == ','))) {
@@ -1145,7 +1165,7 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
         size_t size = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
                 ch = to_upper(ch);
 
                 if ((size > 0) && (state == 0) && ((ch == 0) || (ch == ','))) {
@@ -1189,7 +1209,7 @@ static int parse_buffer_string(struct cat_object *self)
         size_t size = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
 
                 switch (state) {
                 case 0:
@@ -1415,7 +1435,7 @@ static int print_format_num(struct cat_object *self, char *fmt, uint32_t val, ca
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
         len = get_left_buffer_space_by_fsm(self, fsm);
-        written = snprintf((char *)get_current_buffer_by_fsm(self, fsm), len, fmt, val);
+        written = snprintf(get_current_buffer_by_fsm(self, fsm), len, fmt, val);
 
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
@@ -1587,20 +1607,20 @@ static int format_buffer_string(struct cat_object *self, cat_fsm_type fsm)
                 } else {
                         switch (fsm) {
                         case CAT_FSM_TYPE_ATCMD:
-                                if (self->position >= self->desc->buf_size)
+                                if (self->position >= get_atcmd_buf_size(self))
                                         return -1;
-                                self->desc->buf[self->position++] = ch;
-                                if (self->position >= self->desc->buf_size)
+                                get_atcmd_buf(self)[self->position++] = ch;
+                                if (self->position >= get_atcmd_buf_size(self))
                                         return -1;
-                                self->desc->buf[self->position] = 0;
+                                get_atcmd_buf(self)[self->position] = 0;
                                 break;
                         case CAT_FSM_TYPE_UNSOLICITED:
-                                if (self->unsolicited_fsm.position >= self->desc->unsolicited_buf_size)
+                                if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self))
                                         return -1;
-                                self->desc->unsolicited_buf[self->unsolicited_fsm.position++] = ch;
-                                if (self->unsolicited_fsm.position >= self->desc->unsolicited_buf_size)
+                                get_unsolicited_buf(self)[self->unsolicited_fsm.position++] = ch;
+                                if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self))
                                         return -1;
-                                self->desc->unsolicited_buf[self->unsolicited_fsm.position] = 0;
+                                get_unsolicited_buf(self)[self->unsolicited_fsm.position] = 0;
                                 break;
                         default:
                                 assert(false);
@@ -1725,22 +1745,22 @@ static cat_status next_format_var_by_fsm(struct cat_object *self, cat_fsm_type f
         switch (fsm) {
         case CAT_FSM_TYPE_ATCMD:
                 if (++self->index < cmd->var_num) {
-                        if (self->position >= self->desc->buf_size) {
+                        if (self->position >= get_atcmd_buf_size(self)) {
                                 end_processing_with_error(self, fsm);
                                 return CAT_STATUS_BUSY;
                         }
-                        self->desc->buf[self->position++] = ',';
+                        get_atcmd_buf(self)[self->position++] = ',';
                         self->var = &cmd->var[self->index];
                         return CAT_STATUS_BUSY;
                 }
                 break;
         case CAT_FSM_TYPE_UNSOLICITED:
                 if (++self->unsolicited_fsm.index < cmd->var_num) {
-                        if (self->unsolicited_fsm.position >= self->desc->unsolicited_buf_size) {
+                        if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self)) {
                                 end_processing_with_error(self, fsm);
                                 return CAT_STATUS_BUSY;
                         }
-                        self->desc->unsolicited_buf[self->unsolicited_fsm.position++] = ',';
+                        get_unsolicited_buf(self)[self->unsolicited_fsm.position++] = ',';
                         self->unsolicited_fsm.var = &cmd->var[self->unsolicited_fsm.index];
                         return CAT_STATUS_BUSY;
                 }
@@ -1884,13 +1904,13 @@ static cat_status parse_command_args(struct cat_object *self)
                         }
                 }
 
-                if (self->length >= self->desc->buf_size) {
+                if (self->length >= get_atcmd_buf_size(self)) {
                         self->state = CAT_STATE_ERROR;
                         break;
                 }
-                self->desc->buf[self->length++] = self->current_char;
-                if (self->length < self->desc->buf_size) {
-                        self->desc->buf[self->length] = 0;
+                get_atcmd_buf(self)[self->length++] = self->current_char;
+                if (self->length < get_atcmd_buf_size(self)) {
+                        get_atcmd_buf(self)[self->length] = 0;
                 } else {
                         self->state = CAT_STATE_ERROR;
                 }
@@ -2117,7 +2137,7 @@ static cat_status process_write_loop(struct cat_object *self)
 {
         assert(self != NULL);
 
-        switch (self->cmd->write(self->cmd, self->desc->buf, self->length, self->index)) {
+        switch (self->cmd->write(self->cmd, (uint8_t*)get_atcmd_buf(self), self->length, self->index)) {
         case CAT_RETURN_STATE_OK:
         case CAT_RETURN_STATE_DATA_OK:
                 ack_ok(self);
@@ -2178,9 +2198,9 @@ static cat_return_state call_cmd_read_by_fsm(struct cat_object *self, cat_fsm_ty
 
         switch (fsm) {
         case CAT_FSM_TYPE_ATCMD:
-                return cmd->read(cmd, self->desc->buf, &self->position, self->desc->buf_size);
+                return cmd->read(cmd, (uint8_t*)get_atcmd_buf(self), &self->position, get_atcmd_buf_size(self));
         case CAT_FSM_TYPE_UNSOLICITED:
-                return cmd->read(cmd, self->desc->unsolicited_buf, &self->unsolicited_fsm.position, self->desc->unsolicited_buf_size);
+                return cmd->read(cmd, (uint8_t*)get_unsolicited_buf(self), &self->unsolicited_fsm.position, get_unsolicited_buf_size(self));
         default:
                 assert(false);
         }
@@ -2252,9 +2272,9 @@ static cat_return_state call_cmd_test_by_fsm(struct cat_object *self, cat_fsm_ty
 
         switch (fsm) {
         case CAT_FSM_TYPE_ATCMD:
-                return cmd->test(cmd, self->desc->buf, &self->position, self->desc->buf_size);
+                return cmd->test(cmd, (uint8_t*)get_atcmd_buf(self), &self->position, get_atcmd_buf_size(self));
         case CAT_FSM_TYPE_UNSOLICITED:
-                return cmd->test(cmd, self->desc->unsolicited_buf, &self->unsolicited_fsm.position, self->desc->unsolicited_buf_size);
+                return cmd->test(cmd, (uint8_t*)get_unsolicited_buf(self), &self->unsolicited_fsm.position, get_unsolicited_buf_size(self));
         default:
                 assert(false);
         }
@@ -2433,7 +2453,7 @@ static cat_status process_io_write(struct cat_object *self)
                 switch (self->write_state) {
                 case CAT_WRITE_STATE_BEFORE:
                         self->position = 0;
-                        self->write_buf = (char *)self->desc->buf;
+                        self->write_buf = get_atcmd_buf(self);
                         self->write_state = CAT_WRITE_STATE_MAIN_BUFFER;
                         break;
                 case CAT_WRITE_STATE_MAIN_BUFFER:
@@ -2463,7 +2483,7 @@ static cat_status unsolicited_process_io_write(struct cat_object *self)
                 switch (self->unsolicited_fsm.write_state) {
                 case CAT_WRITE_STATE_BEFORE:
                         self->unsolicited_fsm.position = 0;
-                        self->unsolicited_fsm.write_buf = (char *)self->desc->unsolicited_buf;
+                        self->unsolicited_fsm.write_buf = get_unsolicited_buf(self);
                         self->unsolicited_fsm.write_state = CAT_WRITE_STATE_MAIN_BUFFER;
                         break;
                 case CAT_WRITE_STATE_MAIN_BUFFER:

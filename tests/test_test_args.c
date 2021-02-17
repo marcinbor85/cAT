@@ -345,7 +345,7 @@ static struct cat_command cmds[] = {
         }
 };
 
-static char buf[256];
+static char buf[512];
 
 static struct cat_command_group cmd_group = {
         .cmd = cmds,

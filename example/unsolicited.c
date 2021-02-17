@@ -198,7 +198,6 @@ static struct cat_command cmds[] = {
 
 /* working buffer */
 static char buf[128];
-static char unsolicited_buf[128];
 
 /* declaring parser descriptor */
 static struct cat_command_group cmd_group = {
@@ -216,8 +215,6 @@ static struct cat_descriptor desc = {
 
         .buf = buf,
         .buf_size = sizeof(buf),
-        .unsolicited_buf = unsolicited_buf,
-        .unsolicited_buf_size = sizeof(unsolicited_buf),
 };
 
 /* custom target dependent input output handlers */
