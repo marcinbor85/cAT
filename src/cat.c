@@ -35,6 +35,26 @@ SOFTWARE.
 #define CAT_WRITE_STATE_MAIN_BUFFER (1U)
 #define CAT_WRITE_STATE_AFTER (2U)
 
+static inline char* get_atcmd_buf(struct cat_object *self)
+{
+        return (char*)self->desc->buf;
+}
+
+static inline size_t get_atcmd_buf_size(struct cat_object *self)
+{
+        return (self->desc->unsolicited_buf != NULL) ? self->desc->buf_size : self->desc->buf_size >> 1;
+}
+
+static inline char* get_unsolicited_buf(struct cat_object *self)
+{
+        return (self->desc->unsolicited_buf != NULL) ? (char*)self->desc->unsolicited_buf : (char*)&self->desc->buf[self->desc->buf_size >> 1];
+}
+
+static inline size_t get_unsolicited_buf_size(struct cat_object *self)
+{
+        return (self->desc->unsolicited_buf != NULL) ? self->desc->unsolicited_buf_size : self->desc->buf_size >> 1;
+}
+
 static char to_upper(char ch)
 {
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
@@ -51,9 +71,16 @@ static void reset_state(struct cat_object *self)
                 self->state = CAT_STATE_HOLD;
         }
         self->cmd = NULL;
-        self->cmd_type = CAT_CMD_TYPE_NONE,
-        self->disable_ack = false;
-        self->process_unsolicited_cmd = false;
+        self->cmd_type = CAT_CMD_TYPE_NONE;
+}
+
+static void unsolicited_reset_state(struct cat_object *self)
+{
+        assert(self != NULL);
+
+        self->unsolicited_fsm.cmd = NULL;
+        self->unsolicited_fsm.cmd_type = CAT_CMD_TYPE_NONE;
+        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_IDLE;
 }
 
 static cat_status is_busy(struct cat_object *self)
@@ -126,14 +153,14 @@ static bool is_unsolicited_buffer_full(struct cat_object *self)
 {
         assert(self != NULL);
 
-        return (self->unsolicited_cmd_buffer_items_count == CAT_UNSOLICITED_CMD_BUFFER_SIZE) ? true : false;
+        return (self->unsolicited_fsm.unsolicited_cmd_buffer_items_count == CAT_UNSOLICITED_CMD_BUFFER_SIZE) ? true : false;
 }
 
 static bool is_unsolicited_buffer_empty(struct cat_object *self)
 {
         assert(self != NULL);
 
-        return (self->unsolicited_cmd_buffer_items_count == 0) ? true : false;
+        return (self->unsolicited_fsm.unsolicited_cmd_buffer_items_count == 0) ? true : false;
 }
 
 static cat_status pop_unsolicited_cmd(struct cat_object *self, struct cat_command const **cmd, cat_cmd_type *type)
@@ -147,15 +174,15 @@ static cat_status pop_unsolicited_cmd(struct cat_object *self, struct cat_comman
         if (is_unsolicited_buffer_empty(self) != false)
                 return CAT_STATUS_ERROR_BUFFER_EMPTY;
         
-        item = &self->unsolicited_cmd_buffer[self->unsolicited_cmd_buffer_head];
+        item = &self->unsolicited_fsm.unsolicited_cmd_buffer[self->unsolicited_fsm.unsolicited_cmd_buffer_head];
 
         *cmd = item->cmd;
         *type = item->type;
 
-        if (++self->unsolicited_cmd_buffer_head >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
-                self->unsolicited_cmd_buffer_head = 0;
+        if (++self->unsolicited_fsm.unsolicited_cmd_buffer_head >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
+                self->unsolicited_fsm.unsolicited_cmd_buffer_head = 0;
         
-        self->unsolicited_cmd_buffer_items_count--;
+        self->unsolicited_fsm.unsolicited_cmd_buffer_items_count--;
         
         return CAT_STATUS_OK;
 }
@@ -171,15 +198,15 @@ static cat_status push_unsolicited_cmd(struct cat_object *self, struct cat_comma
         if (is_unsolicited_buffer_full(self) != false)
                 return CAT_STATUS_ERROR_BUFFER_FULL;
         
-        item = &self->unsolicited_cmd_buffer[self->unsolicited_cmd_buffer_tail];
+        item = &self->unsolicited_fsm.unsolicited_cmd_buffer[self->unsolicited_fsm.unsolicited_cmd_buffer_tail];
 
         item->cmd = cmd;
         item->type = type;
 
-        if (++self->unsolicited_cmd_buffer_tail >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
-                self->unsolicited_cmd_buffer_tail = 0;
+        if (++self->unsolicited_fsm.unsolicited_cmd_buffer_tail >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
+                self->unsolicited_fsm.unsolicited_cmd_buffer_tail = 0;
         
-        self->unsolicited_cmd_buffer_items_count++;
+        self->unsolicited_fsm.unsolicited_cmd_buffer_items_count++;
         
         return CAT_STATUS_OK;
 }
@@ -201,11 +228,29 @@ cat_status cat_is_unsolicited_buffer_full(struct cat_object *self)
         return (s != false) ? CAT_STATUS_ERROR_BUFFER_FULL : CAT_STATUS_OK;
 }
 
-struct cat_command const* cat_get_processed_command(struct cat_object *self)
+static struct cat_command* get_command_by_fsm(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        return self->cmd;
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return (struct cat_command*)self->cmd;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return (struct cat_command*)self->unsolicited_fsm.cmd;
+        default:
+                assert(false);
+        }
+
+        return NULL;
+}
+
+struct cat_command const* cat_get_processed_command(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        return get_command_by_fsm(self, fsm);
 }
 
 cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat_command const *cmd, cat_cmd_type type)
@@ -214,16 +259,16 @@ cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat
         assert(cmd != NULL);
         assert(type < CAT_CMD_TYPE__TOTAL_NUM);
         
-        size_t num = self->unsolicited_cmd_buffer_items_count;
-        size_t index = self->unsolicited_cmd_buffer_head;
+        size_t num = self->unsolicited_fsm.unsolicited_cmd_buffer_items_count;
+        size_t index = self->unsolicited_fsm.unsolicited_cmd_buffer_head;
         cat_status ret = CAT_STATUS_OK;
         struct cat_unsolicited_cmd *item;
 
-        if ((self->cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (self->cmd_type == type)))
+        if ((self->unsolicited_fsm.cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (self->unsolicited_fsm.cmd_type == type)))
                 ret =  CAT_STATUS_BUSY;
                 
         while ((num > 0) && (ret == CAT_STATUS_OK)) {
-                item = &self->unsolicited_cmd_buffer[index];
+                item = &self->unsolicited_fsm.unsolicited_cmd_buffer[index];
                 if ((item->cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (item->type == type)))
                         ret = CAT_STATUS_BUSY;
 
@@ -249,7 +294,18 @@ static void start_flush_io_buffer(struct cat_object *self, cat_state state_after
         self->write_buf = get_new_line_chars(self);
         self->write_state = CAT_WRITE_STATE_BEFORE;
         self->write_state_after = state_after;
-        self->state = CAT_STATE_FLUSH_IO_WRITE;
+        self->state = CAT_STATE_FLUSH_IO_WRITE_WAIT;
+}
+
+static void unsolicited_start_flush_io_buffer(struct cat_object *self, cat_unsolicited_state state_after)
+{
+        assert(self != NULL);
+
+        self->unsolicited_fsm.position = 0;
+        self->unsolicited_fsm.write_buf = get_new_line_chars(self);
+        self->unsolicited_fsm.write_state = CAT_WRITE_STATE_BEFORE;
+        self->unsolicited_fsm.write_state_after = state_after;
+        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT;
 }
 
 static void start_flush_io_buffer_raw(struct cat_object *self, cat_state state_after)
@@ -257,50 +313,96 @@ static void start_flush_io_buffer_raw(struct cat_object *self, cat_state state_a
         assert(self != NULL);
 
         self->position = 0;
-        self->write_buf = (char *)self->desc->buf;
+        self->write_buf = get_atcmd_buf(self);
         self->write_state = CAT_WRITE_STATE_AFTER;
         self->write_state_after = state_after;
-        self->state = CAT_STATE_FLUSH_IO_WRITE;
+        self->state = CAT_STATE_FLUSH_IO_WRITE_WAIT;
 }
 
 static void ack_error(struct cat_object *self)
 {
         assert(self != NULL);
 
-        if (self->disable_ack == false) {
-                strncpy((char *)self->desc->buf, "ERROR", self->desc->buf_size);
-                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
-                return;
-        }
-
-        reset_state(self);
+        strncpy(get_atcmd_buf(self), "ERROR", get_atcmd_buf_size(self));
+        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
+        return;
 }
 
 static void ack_ok(struct cat_object *self)
 {
         assert(self != NULL);
 
-        if (self->disable_ack == false) {
-                strncpy((char *)self->desc->buf, "OK", self->desc->buf_size);
-                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
-                return;
-        }
-
-        reset_state(self);
+        strncpy(get_atcmd_buf(self), "OK", get_atcmd_buf_size(self));
+        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
+        return;
 }
 
-static int print_string_to_buf(struct cat_object *self, const char *str)
+static size_t get_left_buffer_space_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return get_atcmd_buf_size(self) - self->position;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return get_unsolicited_buf_size(self) - self->unsolicited_fsm.position;
+        default:
+                assert(false);
+        }
+
+        return 0;
+}
+
+static char* get_current_buffer_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return &(get_atcmd_buf(self)[self->position]);
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return &(get_unsolicited_buf(self)[self->unsolicited_fsm.position]);
+        default:
+                assert(false);
+        }
+
+        return NULL;
+}
+
+static void move_position_by_fsm(struct cat_object *self, size_t offset, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                self->position += offset;
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                self->unsolicited_fsm.position += offset;
+                break;
+        default:
+                assert(false);
+        }
+}
+
+static int print_string_to_buf(struct cat_object *self, const char *str, cat_fsm_type fsm)
 {
         int written;
         size_t len;
 
-        len = self->desc->buf_size - self->position;
-        written = snprintf((char *)&self->desc->buf[self->position], len, "%s", str);
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        len = get_left_buffer_space_by_fsm(self, fsm);
+        written = snprintf(get_current_buffer_by_fsm(self, fsm), len, "%s", str);
 
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
 
-        self->position += written;
+        move_position_by_fsm(self, written, fsm);
         return 0;
 }
 
@@ -340,6 +442,15 @@ static struct cat_command const* get_command_by_index(struct cat_object *self, s
         return NULL;
 }
 
+static void unsolicited_init(struct cat_object *self)
+{
+        self->unsolicited_fsm.unsolicited_cmd_buffer_tail = 0;
+        self->unsolicited_fsm.unsolicited_cmd_buffer_head = 0;
+        self->unsolicited_fsm.unsolicited_cmd_buffer_items_count = 0;
+
+        unsolicited_reset_state(self);
+}
+
 void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const struct cat_io_interface *io, const struct cat_mutex_interface *mutex)
 {
         size_t i, j;
@@ -371,14 +482,12 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->desc = desc;
         self->io = io;
         self->mutex = mutex;
-        self->unsolicited_cmd_buffer_tail = 0;
-        self->unsolicited_cmd_buffer_head = 0;
-        self->unsolicited_cmd_buffer_items_count = 0;
-        self->process_unsolicited_cmd = false;
         self->hold_state_flag = false;
         self->hold_exit_status = 0;
 
         reset_state(self);
+
+        unsolicited_init(self);
 }
 
 static cat_status error_state(struct cat_object *self)
@@ -408,7 +517,7 @@ static void prepare_parse_command(struct cat_object *self)
 
         assert(self != NULL);
 
-        memset(self->desc->buf, val, self->desc->buf_size);
+        memset(get_atcmd_buf(self), val, get_atcmd_buf_size(self));
 
         self->index = 0;
         self->length = 0;
@@ -470,23 +579,114 @@ static uint8_t convert_hex_char_to_value(const char ch)
         return ((ch >= '0') && (ch <= '9')) ? (uint8_t)(ch - '0') : (uint8_t)(ch - 'A' + 10U);
 }
 
-static int print_response_test(struct cat_object *self)
+
+static void end_processing_with_error(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        if (self->cmd->description != NULL) {
-                if (print_string_to_buf(self, get_new_line_chars(self)) != 0)
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                ack_error(self);
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                unsolicited_reset_state(self);
+                break;
+        default:
+                assert(false);
+        }
+}
+
+static void end_processing_with_ok(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                ack_ok(self);
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                unsolicited_reset_state(self);
+                break;
+        default:
+                assert(false);
+        }
+}
+
+static void reset_position(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                self->position = 0;
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                self->unsolicited_fsm.position = 0;
+                break;
+        default:
+                assert(false);
+        }
+}
+
+static struct cat_variable* get_var_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return (struct cat_variable*)self->var;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return (struct cat_variable*)self->unsolicited_fsm.var;
+        default:
+                assert(false);
+        }
+
+        return NULL;
+}
+
+static int print_response_test(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        if (cmd->description != NULL) {
+                if (print_string_to_buf(self, get_new_line_chars(self), fsm) != 0)
                         return -1;
-                if (print_string_to_buf(self, self->cmd->description) != 0)
+                if (print_string_to_buf(self, cmd->description, fsm) != 0)
                         return -1;
         }
 
-        if (self->cmd->test != NULL) {
-                self->state = CAT_STATE_TEST_LOOP;
+        if (cmd->test != NULL) {
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        self->state = CAT_STATE_TEST_LOOP;
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_TEST_LOOP;
+                        break;
+                default:
+                        assert(false);
+                }                
                 return 0;
         }
 
-        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                unsolicited_start_flush_io_buffer(self, CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK);
+                break;
+        default:
+                assert(false);
+        }                
+        
         return 0;
 }
 
@@ -572,7 +772,7 @@ static uint8_t get_cmd_state(struct cat_object *self, size_t i)
         assert(self != NULL);
         assert(i < self->commands_num);
 
-        s = self->desc->buf[i >> 2];
+        s = get_atcmd_buf(self)[i >> 2];
         s >>= (i % 4) << 1;
         s &= 0x03;
 
@@ -591,10 +791,10 @@ static void set_cmd_state(struct cat_object *self, size_t i, uint8_t state)
         n = i >> 2;
         k = ((i % 4) << 1);
 
-        s = self->desc->buf[n];
+        s = get_atcmd_buf(self)[n];
         s &= ~(0x03 << k);
         s |= (state & 0x03) << k;
-        self->desc->buf[n] = s;
+        get_atcmd_buf(self)[n] = s;
 }
 
 static cat_status update_command(struct cat_object *self)
@@ -646,31 +846,47 @@ static cat_status wait_read_acknowledge(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-static void start_processing_format_test_args(struct cat_object *self)
+static void start_processing_format_test_args(struct cat_object *self, cat_fsm_type fsm)
 {
-        self->position = 0;
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        if (print_string_to_buf(self, self->cmd->name) != 0) {
-                ack_error(self);
+        reset_position(self, fsm);
+
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        if (print_string_to_buf(self, cmd->name, fsm) != 0) {
+                end_processing_with_error(self, fsm);
                 return;
         }
 
-        if (print_string_to_buf(self, "=") != 0) {
-                ack_error(self);
+        if (print_string_to_buf(self, "=", fsm) != 0) {
+                end_processing_with_error(self, fsm);
                 return;
         }
 
-        if ((self->cmd->var != NULL) && (self->cmd->var_num > 0)) {
-                self->state = CAT_STATE_FORMAT_TEST_ARGS;
-                self->index = 0;
-                self->var = &self->cmd->var[self->index];
+        if ((cmd->var != NULL) && (cmd->var_num > 0)) {
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        self->state = CAT_STATE_FORMAT_TEST_ARGS;
+                        self->index = 0;
+                        self->var = cmd->var;
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FORMAT_TEST_ARGS;
+                        self->unsolicited_fsm.index = 0;
+                        self->unsolicited_fsm.var = cmd->var;
+                        break;
+                default:
+                        assert(false);
+                }                
                 return;
         }
 
-        if (print_response_test(self) == 0)
+        if (print_response_test(self, fsm) == 0)
                 return;
 
-        ack_error(self);
+        end_processing_with_error(self, fsm);
 }
 
 static cat_status wait_test_acknowledge(struct cat_object *self)
@@ -682,7 +898,7 @@ static cat_status wait_test_acknowledge(struct cat_object *self)
 
         switch (self->current_char) {
         case '\n':
-                start_processing_format_test_args(self);
+                start_processing_format_test_args(self, CAT_FSM_TYPE_ATCMD);
                 break;
         case '\r':
                 self->cr_flag = true;
@@ -726,33 +942,58 @@ static cat_status search_command(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-static void start_processing_format_read_args(struct cat_object *self)
+static void start_processing_format_read_args(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        self->position = 0;
+        reset_position(self, fsm);
 
-        if (print_string_to_buf(self, self->cmd->name) != 0) {
-                ack_error(self);
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        if (print_string_to_buf(self, cmd->name, fsm) != 0) {
+                end_processing_with_error(self, fsm);
                 return;
         }
 
-        if (print_string_to_buf(self, "=") != 0) {
-                ack_error(self);
+        if (print_string_to_buf(self, "=", fsm) != 0) {
+                end_processing_with_error(self, fsm);
                 return;
         }
 
-        if (is_variables_access_possible(self, self->cmd, CAT_VAR_ACCESS_READ_ONLY) != false) {
-                self->state = CAT_STATE_FORMAT_READ_ARGS;
-                self->index = 0;
-                self->var = &self->cmd->var[self->index];
+        if (is_variables_access_possible(self, cmd, CAT_VAR_ACCESS_READ_ONLY) != false) {
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        self->state = CAT_STATE_FORMAT_READ_ARGS;
+                        self->index = 0;
+                        self->var = cmd->var;
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FORMAT_READ_ARGS;
+                        self->unsolicited_fsm.index = 0;
+                        self->unsolicited_fsm.var = cmd->var;
+                        break;
+                default:
+                        assert(false);
+                }
+                
                 return;
         }
-        if (self->cmd->read == NULL) {
-                ack_error(self);
+        if (cmd->read == NULL) {
+                end_processing_with_error(self, fsm);
                 return;
         }
-        self->state = CAT_STATE_READ_LOOP;
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                self->state = CAT_STATE_READ_LOOP;
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_READ_LOOP;
+                break;
+        default:
+                assert(false);
+        }
 }
 
 static cat_status command_found(struct cat_object *self)
@@ -777,11 +1018,11 @@ static cat_status command_found(struct cat_object *self)
                         ack_error(self);
                         break;
                 }
-                start_processing_format_read_args(self);
+                start_processing_format_read_args(self, CAT_FSM_TYPE_ATCMD);
                 break;
         case CAT_CMD_TYPE_WRITE:
                 self->length = 0;
-                self->desc->buf[0] = 0;
+                get_atcmd_buf(self)[0] = 0;
                 self->state = CAT_STATE_PARSE_COMMAND_ARGS;
                 break;
         default:
@@ -811,7 +1052,7 @@ static int parse_int_decimal(struct cat_object *self, int64_t *ret)
         int ok = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
 
                 if ((ok != 0) && ((ch == 0) || (ch == ','))) {
                         val *= sign;
@@ -855,7 +1096,7 @@ static int parse_uint_decimal(struct cat_object *self, uint64_t *ret)
         int ok = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
 
                 if ((ok != 0) && ((ch == 0) || (ch == ','))) {
                         *ret = val;
@@ -884,7 +1125,7 @@ static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
         int state = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
                 ch = to_upper(ch);
 
                 if ((state >= 3) && ((ch == 0) || (ch == ','))) {
@@ -924,7 +1165,7 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
         size_t size = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
                 ch = to_upper(ch);
 
                 if ((size > 0) && (state == 0) && ((ch == 0) || (ch == ','))) {
@@ -968,7 +1209,7 @@ static int parse_buffer_string(struct cat_object *self)
         size_t size = 0;
 
         while (1) {
-                ch = self->desc->buf[self->position++];
+                ch = get_atcmd_buf(self)[self->position++];
 
                 switch (state) {
                 case 0:
@@ -1185,135 +1426,150 @@ static cat_status parse_write_args(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-static int print_format_num(struct cat_object *self, char *fmt, uint32_t val)
+static int print_format_num(struct cat_object *self, char *fmt, uint32_t val, cat_fsm_type fsm)
 {
         int written;
         size_t len;
 
-        len = self->desc->buf_size - self->position;
-        written = snprintf((char *)&self->desc->buf[self->position], len, fmt, val);
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        len = get_left_buffer_space_by_fsm(self, fsm);
+        written = snprintf(get_current_buffer_by_fsm(self, fsm), len, fmt, val);
 
         if ((written < 0) || ((size_t)written >= len))
                 return -1;
 
-        self->position += written;
+        move_position_by_fsm(self, written, fsm);
         return 0;
 }
 
-static int format_int_decimal(struct cat_object *self)
+static int format_int_decimal(struct cat_object *self, cat_fsm_type fsm)
 {
         int32_t val;
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        switch (self->var->data_size) {
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        switch (var->data_size) {
         case 1:
-                val = *(int8_t *)self->var->data;
+                val = *(int8_t *)var->data;
                 break;
         case 2:
-                val = *(int16_t *)self->var->data;
+                val = *(int16_t *)var->data;
                 break;
         case 4:
-                val = *(int32_t *)self->var->data;
+                val = *(int32_t *)var->data;
                 break;
         default:
                 return -1;
         }
 
-        if (self->var->access == CAT_VAR_ACCESS_WRITE_ONLY)
+        if (var->access == CAT_VAR_ACCESS_WRITE_ONLY)
                 val = 0;
 
-        if (print_format_num(self, "%d", val) != 0)
+        if (print_format_num(self, "%d", val, fsm) != 0)
                 return -1;
 
         return 0;
 }
 
-static int format_uint_decimal(struct cat_object *self)
+static int format_uint_decimal(struct cat_object *self, cat_fsm_type fsm)
 {
         uint32_t val;
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        switch (self->var->data_size) {
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        switch (var->data_size) {
         case 1:
-                val = *(uint8_t *)self->var->data;
+                val = *(uint8_t *)var->data;
                 break;
         case 2:
-                val = *(uint16_t *)self->var->data;
+                val = *(uint16_t *)var->data;
                 break;
         case 4:
-                val = *(uint32_t *)self->var->data;
+                val = *(uint32_t *)var->data;
                 break;
         default:
                 return -1;
         }
 
-        if (self->var->access == CAT_VAR_ACCESS_WRITE_ONLY)
+        if (var->access == CAT_VAR_ACCESS_WRITE_ONLY)
                 val = 0;
 
-        if (print_format_num(self, "%u", val) != 0)
+        if (print_format_num(self, "%u", val, fsm) != 0)
                 return -1;
 
         return 0;
 }
 
-static int format_num_hexadecimal(struct cat_object *self)
+static int format_num_hexadecimal(struct cat_object *self, cat_fsm_type fsm)
 {
         uint32_t val;
         char fstr[8];
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        switch (self->var->data_size) {
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        switch (var->data_size) {
         case 1:
-                val = *(uint8_t *)self->var->data;
+                val = *(uint8_t *)var->data;
                 strcpy(fstr, "0x%02X");
                 break;
         case 2:
-                val = *(uint16_t *)self->var->data;
+                val = *(uint16_t *)var->data;
                 strcpy(fstr, "0x%04X");
                 break;
         case 4:
-                val = *(uint32_t *)self->var->data;
+                val = *(uint32_t *)var->data;
                 strcpy(fstr, "0x%08X");
                 break;
         default:
                 return -1;
         }
 
-        if (self->var->access == CAT_VAR_ACCESS_WRITE_ONLY)
+        if (var->access == CAT_VAR_ACCESS_WRITE_ONLY)
                 val = 0;
 
-        if (print_format_num(self, fstr, val) != 0)
+        if (print_format_num(self, fstr, val, fsm) != 0)
                 return -1;
 
         return 0;
 }
 
-static int format_buffer_hexadecimal(struct cat_object *self)
+static int format_buffer_hexadecimal(struct cat_object *self, cat_fsm_type fsm)
 {
         size_t i;
         uint8_t *buf;
         uint8_t val;
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        buf = self->var->data;
-        for (i = 0; i < self->var->data_size; i++) {
-                if (self->var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        buf = var->data;
+        for (i = 0; i < var->data_size; i++) {
+                if (var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
                         val = 0;
                 } else {
                         val = buf[i];
                 }
 
-                if (print_format_num(self, "%02X", val) != 0)
+                if (print_format_num(self, "%02X", val, fsm) != 0)
                         return -1;
         }
         return 0;
 }
 
-static int format_buffer_string(struct cat_object *self)
+static int format_buffer_string(struct cat_object *self, cat_fsm_type fsm)
 {
         size_t i = 0;
         char *buf;
@@ -1321,54 +1577,74 @@ static int format_buffer_string(struct cat_object *self)
         char ch;
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        if (self->var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        if (var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
                 buf_size = 0;
         } else {
-                buf_size = self->var->data_size;
+                buf_size = var->data_size;
         }
 
-        if (print_string_to_buf(self, "\"") != 0)
+        if (print_string_to_buf(self, "\"", fsm) != 0)
                 return -1;
 
-        buf = self->var->data;
+        buf = var->data;
         for (i = 0; i < buf_size; i++) {
                 ch = buf[i];
                 if (ch == 0)
                         break;
                 if (ch == '\\') {
-                        if (print_string_to_buf(self, "\\\\") != 0)
+                        if (print_string_to_buf(self, "\\\\", fsm) != 0)
                                 return -1;
                 } else if (ch == '"') {
-                        if (print_string_to_buf(self, "\\\"") != 0)
+                        if (print_string_to_buf(self, "\\\"", fsm) != 0)
                                 return -1;
                 } else if (ch == '\n') {
-                        if (print_string_to_buf(self, "\\n") != 0)
+                        if (print_string_to_buf(self, "\\n", fsm) != 0)
                                 return -1;
                 } else {
-                        if (self->position >= self->desc->buf_size)
-                                return -1;
-                        self->desc->buf[self->position++] = ch;
-                        if (self->position >= self->desc->buf_size)
-                                return -1;
-                        self->desc->buf[self->position] = 0;
+                        switch (fsm) {
+                        case CAT_FSM_TYPE_ATCMD:
+                                if (self->position >= get_atcmd_buf_size(self))
+                                        return -1;
+                                get_atcmd_buf(self)[self->position++] = ch;
+                                if (self->position >= get_atcmd_buf_size(self))
+                                        return -1;
+                                get_atcmd_buf(self)[self->position] = 0;
+                                break;
+                        case CAT_FSM_TYPE_UNSOLICITED:
+                                if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self))
+                                        return -1;
+                                get_unsolicited_buf(self)[self->unsolicited_fsm.position++] = ch;
+                                if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self))
+                                        return -1;
+                                get_unsolicited_buf(self)[self->unsolicited_fsm.position] = 0;
+                                break;
+                        default:
+                                assert(false);
+                        }
                 }
         }
 
-        if (print_string_to_buf(self, "\"") != 0)
+        if (print_string_to_buf(self, "\"", fsm) != 0)
                 return -1;
 
         return 0;
 }
 
-static int format_info_type(struct cat_object *self)
+static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
 {
         char var_type[8];
         char accessor[8];
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        switch (self->var->access) {
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        switch (var->access) {
         case CAT_VAR_ACCESS_READ_WRITE:
                 strcpy(accessor, "RW");
                 break;
@@ -1383,9 +1659,9 @@ static int format_info_type(struct cat_object *self)
                 break;
         }
 
-        switch (self->var->type) {
+        switch (var->type) {
         case CAT_VAR_INT_DEC:
-                switch (self->var->data_size) {
+                switch (var->data_size) {
                 case 1:
                         strcpy(var_type, "INT8");
                         break;
@@ -1400,7 +1676,7 @@ static int format_info_type(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_UINT_DEC:
-                switch (self->var->data_size) {
+                switch (var->data_size) {
                 case 1:
                         strcpy(var_type, "UINT8");
                         break;
@@ -1415,7 +1691,7 @@ static int format_info_type(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_NUM_HEX:
-                switch (self->var->data_size) {
+                switch (var->data_size) {
                 case 1:
                         strcpy(var_type, "HEX8");
                         break;
@@ -1429,7 +1705,6 @@ static int format_info_type(struct cat_object *self)
                         return -1;
                 }
                 break;
-                break;
         case CAT_VAR_BUF_HEX:
                 strcpy(var_type, "HEXBUF");
                 break;
@@ -1438,104 +1713,155 @@ static int format_info_type(struct cat_object *self)
                 break;
         }
 
-        if (print_string_to_buf(self, "<") != 0)
+        if (print_string_to_buf(self, "<", fsm) != 0)
                 return -1;
-        if (self->var->name != NULL) {
-                if (print_string_to_buf(self, self->var->name) != 0)
+        if (var->name != NULL) {
+                if (print_string_to_buf(self, var->name, fsm) != 0)
                         return -1;
-                if (print_string_to_buf(self, ":") != 0)
+                if (print_string_to_buf(self, ":", fsm) != 0)
                         return -1;
         }
-        if (print_string_to_buf(self, var_type) != 0)
+        if (print_string_to_buf(self, var_type, fsm) != 0)
                 return -1;
-        if (print_string_to_buf(self, "[") != 0)
+        if (print_string_to_buf(self, "[", fsm) != 0)
                 return -1;
-        if (print_string_to_buf(self, accessor) != 0)
+        if (print_string_to_buf(self, accessor, fsm) != 0)
                 return -1;
-        if (print_string_to_buf(self, "]") != 0)
+        if (print_string_to_buf(self, "]", fsm) != 0)
                 return -1;
-        if (print_string_to_buf(self, ">") != 0)
+        if (print_string_to_buf(self, ">", fsm) != 0)
                 return -1;
 
         return 0;
 }
 
-static cat_status format_read_args(struct cat_object *self)
+static cat_status next_format_var_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                if (++self->index < cmd->var_num) {
+                        if (self->position >= get_atcmd_buf_size(self)) {
+                                end_processing_with_error(self, fsm);
+                                return CAT_STATUS_BUSY;
+                        }
+                        get_atcmd_buf(self)[self->position++] = ',';
+                        self->var = &cmd->var[self->index];
+                        return CAT_STATUS_BUSY;
+                }
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                if (++self->unsolicited_fsm.index < cmd->var_num) {
+                        if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self)) {
+                                end_processing_with_error(self, fsm);
+                                return CAT_STATUS_BUSY;
+                        }
+                        get_unsolicited_buf(self)[self->unsolicited_fsm.position++] = ',';
+                        self->unsolicited_fsm.var = &cmd->var[self->unsolicited_fsm.index];
+                        return CAT_STATUS_BUSY;
+                }
+                break;
+        default:
+                assert(false);
+        }
+
+        return CAT_STATUS_OK;
+}
+
+static cat_status format_read_args(struct cat_object *self, cat_fsm_type fsm)
 {
         cat_status stat;
 
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        if ((self->var->read != NULL) && (self->var->read(self->var) != 0)) {
-                ack_error(self);
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+
+        if ((var->read != NULL) && (var->read(var) != 0)) {
+                end_processing_with_error(self, fsm);
                 return CAT_STATUS_BUSY;
         }
 
-        switch (self->var->type) {
+        switch (var->type) {
         case CAT_VAR_INT_DEC:
-                stat = format_int_decimal(self);
+                stat = format_int_decimal(self, fsm);
                 break;
         case CAT_VAR_UINT_DEC:
-                stat = format_uint_decimal(self);
+                stat = format_uint_decimal(self, fsm);
                 break;
         case CAT_VAR_NUM_HEX:
-                stat = format_num_hexadecimal(self);
+                stat = format_num_hexadecimal(self, fsm);
                 break;
         case CAT_VAR_BUF_HEX:
-                stat = format_buffer_hexadecimal(self);
+                stat = format_buffer_hexadecimal(self, fsm);
                 break;
         case CAT_VAR_BUF_STRING:
-                stat = format_buffer_string(self);
+                stat = format_buffer_string(self, fsm);
                 break;
         }
 
         if (stat < 0) {
-                ack_error(self);
+                end_processing_with_error(self, fsm);
                 return CAT_STATUS_BUSY;
         }
 
-        if (++self->index < self->cmd->var_num) {
-                if (self->position >= self->desc->buf_size) {
-                        ack_error(self);
-                        return CAT_STATUS_BUSY;
+        stat = next_format_var_by_fsm(self, fsm);
+        if (stat != CAT_STATUS_OK)
+                return stat;
+
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        if (cmd->read != NULL) {
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        self->state = CAT_STATE_READ_LOOP;
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_READ_LOOP;
+                        break;
+                default:
+                        assert(false);
                 }
-                self->desc->buf[self->position++] = ',';
-                self->var = &self->cmd->var[self->index];
+                
                 return CAT_STATUS_BUSY;
         }
 
-        if (self->cmd->read != NULL) {
-                self->state = CAT_STATE_READ_LOOP;
-                return CAT_STATUS_BUSY;
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                break;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                unsolicited_start_flush_io_buffer(self, CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK);
+                break;
+        default:
+                assert(false);
         }
-
-        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+        
         return CAT_STATUS_BUSY;
 }
 
-static cat_status format_test_args(struct cat_object *self)
+static cat_status format_test_args(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        if (format_info_type(self) < 0) {
-                ack_error(self);
+        if (format_info_type(self, fsm) < 0) {
+                end_processing_with_error(self, fsm);
                 return CAT_STATUS_BUSY;
         }
 
-        if (++self->index < self->cmd->var_num) {
-                if (self->position >= self->desc->buf_size) {
-                        ack_error(self);
-                        return CAT_STATUS_BUSY;
-                }
-                self->desc->buf[self->position++] = ',';
-                self->var = &self->cmd->var[self->index];
-                return CAT_STATUS_BUSY;
-        }
+        cat_status stat = next_format_var_by_fsm(self, fsm);
+        if (stat != CAT_STATUS_OK)
+                return stat;
 
-        if (print_response_test(self) == 0)
+        if (print_response_test(self, fsm) == 0)
                 return CAT_STATUS_BUSY;
 
-        ack_error(self);
+        end_processing_with_error(self, fsm);
         return CAT_STATUS_BUSY;
 }
 
@@ -1578,13 +1904,13 @@ static cat_status parse_command_args(struct cat_object *self)
                         }
                 }
 
-                if (self->length >= self->desc->buf_size) {
+                if (self->length >= get_atcmd_buf_size(self)) {
                         self->state = CAT_STATE_ERROR;
                         break;
                 }
-                self->desc->buf[self->length++] = self->current_char;
-                if (self->length < self->desc->buf_size) {
-                        self->desc->buf[self->length] = 0;
+                get_atcmd_buf(self)[self->length++] = self->current_char;
+                if (self->length < get_atcmd_buf_size(self)) {
+                        get_atcmd_buf(self)[self->length] = 0;
                 } else {
                         self->state = CAT_STATE_ERROR;
                 }
@@ -1622,45 +1948,32 @@ cat_status cat_trigger_unsolicited_test(struct cat_object *self, struct cat_comm
         return cat_trigger_unsolicited_event(self, cmd, CAT_CMD_TYPE_TEST);
 }
 
-static cat_status check_unsolicited_buffers(struct cat_object *self)
+static void check_unsolicited_buffers(struct cat_object *self)
 {
         cat_cmd_type type;
 
         assert(self != NULL);
 
-        if (self->process_unsolicited_cmd != false)
-                return CAT_STATUS_BUSY;
+        if (pop_unsolicited_cmd(self, &self->unsolicited_fsm.cmd, &type) != CAT_STATUS_OK)
+                return;
 
-        if (pop_unsolicited_cmd(self, &self->cmd, &type) != CAT_STATUS_OK)
-                return CAT_STATUS_OK;
-
-        self->disable_ack = true;
-        self->process_unsolicited_cmd = true;
-        self->cmd_type = type;
+        self->unsolicited_fsm.cmd_type = type;
 
         switch (type) {
         case CAT_CMD_TYPE_READ:
-                start_processing_format_read_args(self);
+                start_processing_format_read_args(self, CAT_FSM_TYPE_UNSOLICITED);
                 break;
         case CAT_CMD_TYPE_TEST:
-                start_processing_format_test_args(self);
+                start_processing_format_test_args(self, CAT_FSM_TYPE_UNSOLICITED);
                 break;
         default:
-                return CAT_STATUS_OK;
+                break;
         }
-
-        return CAT_STATUS_BUSY;
 }
 
 static cat_status process_idle_state(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
-
-        s = check_unsolicited_buffers(self);
-        if (s != CAT_STATUS_OK)
-                return s;
 
         if (read_cmd_char(self) == 0)
                 return CAT_STATUS_OK;
@@ -1735,18 +2048,18 @@ static bool cmd_list_next_cmd(struct cat_object *self)
 static int print_current_cmd_full_name(struct cat_object *self, const char *suffix)
 {
         if (self->length == 0) {
-                if (print_string_to_buf(self, get_new_line_chars(self)) != 0)
+                if (print_string_to_buf(self, get_new_line_chars(self), CAT_FSM_TYPE_ATCMD) != 0)
                         return -1;
                 self->length = 1;
         }
         
-        if (print_string_to_buf(self, "AT") != 0)
+        if (print_string_to_buf(self, "AT", CAT_FSM_TYPE_ATCMD) != 0)
                 return -1;
-        if (print_string_to_buf(self, self->cmd->name) != 0)
+        if (print_string_to_buf(self, self->cmd->name, CAT_FSM_TYPE_ATCMD) != 0)
                 return -1;
-        if (print_string_to_buf(self, suffix) != 0)
+        if (print_string_to_buf(self, suffix, CAT_FSM_TYPE_ATCMD) != 0)
                 return -1;
-        if (print_string_to_buf(self, get_new_line_chars(self)) != 0)
+        if (print_string_to_buf(self, get_new_line_chars(self), CAT_FSM_TYPE_ATCMD) != 0)
                 return -1;
 
         return 0;
@@ -1824,7 +2137,7 @@ static cat_status process_write_loop(struct cat_object *self)
 {
         assert(self != NULL);
 
-        switch (self->cmd->write(self->cmd, self->desc->buf, self->length, self->index)) {
+        switch (self->cmd->write(self->cmd, (uint8_t*)get_atcmd_buf(self), self->length, self->index)) {
         case CAT_RETURN_STATE_OK:
         case CAT_RETURN_STATE_DATA_OK:
                 ack_ok(self);
@@ -1876,78 +2189,154 @@ static cat_status process_run_loop(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
-static cat_status process_read_loop(struct cat_object *self)
+static cat_return_state call_cmd_read_by_fsm(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        switch (self->cmd->read(self->cmd, self->desc->buf, &self->position, self->desc->buf_size)) {
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return cmd->read(cmd, (uint8_t*)get_atcmd_buf(self), &self->position, get_atcmd_buf_size(self));
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return cmd->read(cmd, (uint8_t*)get_unsolicited_buf(self), &self->unsolicited_fsm.position, get_unsolicited_buf_size(self));
+        default:
+                assert(false);
+        }
+}
+
+static cat_status process_read_loop(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (call_cmd_read_by_fsm(self, fsm)) {
         case CAT_RETURN_STATE_OK:
-                ack_ok(self);
+                end_processing_with_ok(self, fsm);
                 break;
         case CAT_RETURN_STATE_DATA_OK:
-                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        unsolicited_start_flush_io_buffer(self, CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK);
+                        break;
+                default:
+                        assert(false);
+                }
                 break;
         case CAT_RETURN_STATE_DATA_NEXT:
-                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS);
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS);
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        unsolicited_start_flush_io_buffer(self, CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_READ_ARGS);
+                        break;
+                default:
+                        assert(false);
+                }
                 break;
         case CAT_RETURN_STATE_NEXT:
-                start_processing_format_read_args(self);
+                start_processing_format_read_args(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD:
                 enable_hold_state(self);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
                 hold_exit(self, CAT_STATUS_OK);
-                ack_ok(self);
+                end_processing_with_ok(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
                 hold_exit(self, CAT_STATUS_ERROR);
-                ack_error(self);
+                end_processing_with_error(self, fsm);
                 break;
         case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
         case CAT_RETURN_STATE_ERROR:
         default:
-                ack_error(self);
+                end_processing_with_error(self, fsm);
                 break;
         }
 
         return CAT_STATUS_BUSY;
 }
 
-static cat_status process_test_loop(struct cat_object *self)
+static cat_return_state call_cmd_test_by_fsm(struct cat_object *self, cat_fsm_type fsm)
 {
         assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        switch (self->cmd->test(self->cmd, self->desc->buf, &self->position, self->desc->buf_size)) {
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return cmd->test(cmd, (uint8_t*)get_atcmd_buf(self), &self->position, get_atcmd_buf_size(self));
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return cmd->test(cmd, (uint8_t*)get_unsolicited_buf(self), &self->unsolicited_fsm.position, get_unsolicited_buf_size(self));
+        default:
+                assert(false);
+        }
+}
+
+static cat_status process_test_loop(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (call_cmd_test_by_fsm(self, fsm)) {
         case CAT_RETURN_STATE_OK:
-                ack_ok(self);
+                end_processing_with_ok(self, fsm);
                 break;
         case CAT_RETURN_STATE_DATA_OK:
-                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_OK);
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        unsolicited_start_flush_io_buffer(self, CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK);
+                        break;
+                default:
+                        assert(false);
+                }
                 break;
         case CAT_RETURN_STATE_DATA_NEXT:
-                start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS);
+                switch (fsm) {
+                case CAT_FSM_TYPE_ATCMD:
+                        start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS);
+                        break;
+                case CAT_FSM_TYPE_UNSOLICITED:
+                        unsolicited_start_flush_io_buffer(self, CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS);
+                        break;
+                default:
+                        assert(false);
+                }
                 break;
         case CAT_RETURN_STATE_NEXT:
-                start_processing_format_test_args(self);
+                start_processing_format_test_args(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD:
                 enable_hold_state(self);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_OK:
                 hold_exit(self, CAT_STATUS_OK);
-                ack_ok(self);
+                end_processing_with_ok(self, fsm);
                 break;
         case CAT_RETURN_STATE_HOLD_EXIT_ERROR:
                 hold_exit(self, CAT_STATUS_ERROR);
-                ack_error(self);
+                end_processing_with_error(self, fsm);
                 break;
         case CAT_RETURN_STATE_PRINT_CMD_LIST_OK:
-                start_print_cmd_list(self);
+                if (fsm == CAT_FSM_TYPE_ATCMD) {
+                        start_print_cmd_list(self);
+                } else {
+                        end_processing_with_ok(self, fsm);
+                }
                 break;
         case CAT_RETURN_STATE_ERROR:
         default:
-                ack_error(self);
+                end_processing_with_error(self, fsm);
                 break;
         }
 
@@ -1956,13 +2345,7 @@ static cat_status process_test_loop(struct cat_object *self)
 
 static cat_status process_hold_state(struct cat_object *self)
 {
-        cat_status s;
-
         assert(self != NULL);
-
-        s = check_unsolicited_buffers(self);
-        if (s != CAT_STATUS_OK)
-                return s;
 
         if (self->hold_exit_status == 0)
                 return CAT_STATUS_BUSY;
@@ -2046,6 +2429,22 @@ struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, 
         return NULL;
 }
 
+static cat_status process_io_write_wait(struct cat_object *self)
+{
+        if (self->unsolicited_fsm.state != CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE)
+                self->state = CAT_STATE_FLUSH_IO_WRITE;
+
+        return CAT_STATUS_BUSY;
+}
+
+static cat_status unsolicited_process_io_write_wait(struct cat_object *self)
+{
+        if (self->state != CAT_STATE_FLUSH_IO_WRITE)
+                self->unsolicited_fsm.state = CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE;
+
+        return CAT_STATUS_BUSY;
+}
+
 static cat_status process_io_write(struct cat_object *self)
 {
         char ch = self->write_buf[self->position];
@@ -2054,7 +2453,7 @@ static cat_status process_io_write(struct cat_object *self)
                 switch (self->write_state) {
                 case CAT_WRITE_STATE_BEFORE:
                         self->position = 0;
-                        self->write_buf = (char *)self->desc->buf;
+                        self->write_buf = get_atcmd_buf(self);
                         self->write_state = CAT_WRITE_STATE_MAIN_BUFFER;
                         break;
                 case CAT_WRITE_STATE_MAIN_BUFFER:
@@ -2076,14 +2475,101 @@ static cat_status process_io_write(struct cat_object *self)
         return CAT_STATUS_BUSY;
 }
 
+static cat_status unsolicited_process_io_write(struct cat_object *self)
+{
+        char ch = self->unsolicited_fsm.write_buf[self->unsolicited_fsm.position];
+
+        if (ch == '\0') {
+                switch (self->unsolicited_fsm.write_state) {
+                case CAT_WRITE_STATE_BEFORE:
+                        self->unsolicited_fsm.position = 0;
+                        self->unsolicited_fsm.write_buf = get_unsolicited_buf(self);
+                        self->unsolicited_fsm.write_state = CAT_WRITE_STATE_MAIN_BUFFER;
+                        break;
+                case CAT_WRITE_STATE_MAIN_BUFFER:
+                        self->unsolicited_fsm.position = 0;
+                        self->unsolicited_fsm.write_buf = get_new_line_chars(self);
+                        self->unsolicited_fsm.write_state = CAT_WRITE_STATE_AFTER;
+                        break;
+                case CAT_WRITE_STATE_AFTER:
+                        self->unsolicited_fsm.state = self->unsolicited_fsm.write_state_after;
+                        break;
+                }
+                return CAT_STATUS_BUSY;
+        }
+
+        if (self->io->write(ch) != 1)
+                return CAT_STATUS_BUSY;
+
+        self->unsolicited_fsm.position++;
+        return CAT_STATUS_BUSY;
+}
+
+static cat_status unsolicited_events_service(struct cat_object *self)
+{
+        cat_status s = CAT_STATUS_OK;
+
+        switch (self->unsolicited_fsm.state) {
+        case CAT_UNSOLICITED_STATE_IDLE:
+                check_unsolicited_buffers(self);
+                break;
+        case CAT_UNSOLICITED_STATE_FORMAT_READ_ARGS:
+                s = format_read_args(self, CAT_FSM_TYPE_UNSOLICITED);
+                break;
+        case CAT_UNSOLICITED_STATE_FORMAT_TEST_ARGS:
+                s = format_test_args(self, CAT_FSM_TYPE_UNSOLICITED);
+                break;
+        case CAT_UNSOLICITED_STATE_READ_LOOP:
+                s = process_read_loop(self, CAT_FSM_TYPE_UNSOLICITED);
+                break;
+        case CAT_UNSOLICITED_STATE_TEST_LOOP:
+                s = process_test_loop(self, CAT_FSM_TYPE_UNSOLICITED);
+                break;
+        case CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT:
+                s = unsolicited_process_io_write_wait(self);
+                break;
+        case CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE:
+                s = unsolicited_process_io_write(self);
+                break;
+        case CAT_UNSOLICITED_STATE_AFTER_FLUSH_RESET:
+                unsolicited_reset_state(self);
+                s = CAT_STATUS_BUSY;
+                break;
+        case CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK:
+                end_processing_with_ok(self, CAT_FSM_TYPE_UNSOLICITED);
+                s = CAT_STATUS_BUSY;
+                break;
+        case CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_READ_ARGS:
+                start_processing_format_read_args(self, CAT_FSM_TYPE_UNSOLICITED);
+                s = CAT_STATUS_BUSY;
+                break;
+        case CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS:
+                start_processing_format_test_args(self, CAT_FSM_TYPE_UNSOLICITED);
+                s = CAT_STATUS_BUSY;
+                break;
+        default:
+                break;
+        }
+
+        return s;
+}
+
+static bool is_unsolicited_fsm_busy(struct cat_object *self)
+{
+        return (self->unsolicited_fsm.state != CAT_UNSOLICITED_STATE_IDLE);
+}
+
 cat_status cat_service(struct cat_object *self)
 {
         cat_status s;
+        cat_status unsolicited_stat;
 
         assert(self != NULL);
 
         if ((self->mutex != NULL) && (self->mutex->lock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_LOCK;
+
+        unsolicited_stat = unsolicited_events_service(self);
 
         switch (self->state) {
         case CAT_STATE_ERROR:
@@ -2120,28 +2606,31 @@ cat_status cat_service(struct cat_object *self)
                 s = parse_write_args(self);
                 break;
         case CAT_STATE_FORMAT_READ_ARGS:
-                s = format_read_args(self);
+                s = format_read_args(self, CAT_FSM_TYPE_ATCMD);
                 break;
         case CAT_STATE_WAIT_TEST_ACKNOWLEDGE:
                 s = wait_test_acknowledge(self);
                 break;
         case CAT_STATE_FORMAT_TEST_ARGS:
-                s = format_test_args(self);
+                s = format_test_args(self, CAT_FSM_TYPE_ATCMD);
                 break;
         case CAT_STATE_WRITE_LOOP:
                 s = process_write_loop(self);
                 break;
         case CAT_STATE_READ_LOOP:
-                s = process_read_loop(self);
+                s = process_read_loop(self, CAT_FSM_TYPE_ATCMD);
                 break;
         case CAT_STATE_TEST_LOOP:
-                s = process_test_loop(self);
+                s = process_test_loop(self, CAT_FSM_TYPE_ATCMD);
                 break;
         case CAT_STATE_RUN_LOOP:
                 s = process_run_loop(self);
                 break;
         case CAT_STATE_HOLD:
                 s = process_hold_state(self);
+                break;
+        case CAT_STATE_FLUSH_IO_WRITE_WAIT:
+                s = process_io_write_wait(self);
                 break;
         case CAT_STATE_FLUSH_IO_WRITE:
                 s = process_io_write(self);
@@ -2155,11 +2644,11 @@ cat_status cat_service(struct cat_object *self)
                 s = CAT_STATUS_BUSY;
                 break;
         case CAT_STATE_AFTER_FLUSH_FORMAT_READ_ARGS:
-                start_processing_format_read_args(self);
+                start_processing_format_read_args(self, CAT_FSM_TYPE_ATCMD);
                 s = CAT_STATUS_BUSY;
                 break;
         case CAT_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS:
-                start_processing_format_test_args(self);
+                start_processing_format_test_args(self, CAT_FSM_TYPE_ATCMD);
                 s = CAT_STATUS_BUSY;
                 break;
         case CAT_STATE_PRINT_CMD:
@@ -2171,8 +2660,9 @@ cat_status cat_service(struct cat_object *self)
                 break;
         }
 
-        if (self->process_unsolicited_cmd != false)
+        if ((unsolicited_stat != CAT_STATUS_OK) || (is_unsolicited_fsm_busy(self) != false)) {
                 s = CAT_STATUS_BUSY;
+        }
 
         if ((self->mutex != NULL) && (self->mutex->unlock() != 0))
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;

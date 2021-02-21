@@ -113,7 +113,7 @@ static struct cat_descriptor desc = {
         .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]),
 
         .buf = buf,
-        .buf_size = sizeof(buf)
+        .buf_size = sizeof(buf),
 };
 
 static int write_char(char ch)

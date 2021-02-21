@@ -205,6 +205,7 @@ typedef enum {
         CAT_STATE_TEST_LOOP,
         CAT_STATE_RUN_LOOP,
         CAT_STATE_HOLD,
+        CAT_STATE_FLUSH_IO_WRITE_WAIT,
         CAT_STATE_FLUSH_IO_WRITE,
         CAT_STATE_AFTER_FLUSH_RESET,
         CAT_STATE_AFTER_FLUSH_OK,
@@ -269,12 +270,59 @@ struct cat_descriptor {
 
         uint8_t *buf; /* pointer to working buffer (used to parse command argument) */
         size_t buf_size; /* working buffer length */
+
+        /* optional unsolicited buffer, if not configured (NULL) */
+        /* then the buf will be divided into two smaller buffers */
+        uint8_t *unsolicited_buf; /* pointer to unsolicited working buffer (used to parse command argument) */
+        size_t unsolicited_buf_size; /* unsolicited working buffer length */
 };
 
 /* strcuture with unsolicited command buffered infos */
 struct cat_unsolicited_cmd {
         struct cat_command const *cmd; /* pointer to commands used to unsolicited event */
         cat_cmd_type type; /* type of unsolicited event */
+};
+
+/* enum type with unsolicited events fsm state */
+typedef enum {
+        CAT_UNSOLICITED_STATE_IDLE,
+        CAT_UNSOLICITED_STATE_FORMAT_READ_ARGS,
+        CAT_UNSOLICITED_STATE_FORMAT_TEST_ARGS,
+        CAT_UNSOLICITED_STATE_READ_LOOP,
+        CAT_UNSOLICITED_STATE_TEST_LOOP,
+        CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT,
+        CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE,        
+        CAT_UNSOLICITED_STATE_AFTER_FLUSH_RESET,
+        CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK,
+        CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_READ_ARGS,
+        CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS,    
+} cat_unsolicited_state;
+
+/* enum type with fsm type */
+typedef enum {
+        CAT_FSM_TYPE_ATCMD,
+        CAT_FSM_TYPE_UNSOLICITED,
+        CAT_FSM_TYPE__TOTAL_NUM,
+} cat_fsm_type;
+
+struct cat_unsolicited_fsm {
+        cat_unsolicited_state state; /* current unsolicited fsm state */
+
+        size_t index; /* index used to iterate over commands and variables */
+        size_t position; /* position of actually parsed char in arguments string */
+
+        struct cat_command const *cmd; /* pointer to current command descriptor */
+        struct cat_variable const *var; /* pointer to current variable descriptor */
+        cat_cmd_type cmd_type; /* type of command request */
+
+        char const *write_buf; /* working buffer pointer used for asynch writing to io */
+        int write_state; /* before, data, after flush io write state */
+        cat_unsolicited_state write_state_after; /* parser state to set after flush io write */
+        
+        struct cat_unsolicited_cmd unsolicited_cmd_buffer[CAT_UNSOLICITED_CMD_BUFFER_SIZE]; /* buffer with unsolicited commands used to unsolicited event */
+        size_t unsolicited_cmd_buffer_tail; /* tail index of unsolicited cmd buffer */
+        size_t unsolicited_cmd_buffer_head; /* head index of unsolicited cmd buffer */
+        size_t unsolicited_cmd_buffer_items_count; /* number of unsolicited cmd in buffer */
 };
 
 /* structure with main at command parser object */
@@ -297,18 +345,13 @@ struct cat_object {
         char current_char; /* current received char from input stream */
         cat_state state; /* current fsm state */
         bool cr_flag; /* flag for detect <cr> char in input string */
-        bool disable_ack; /* flag for disabling ACK messages OK/ERROR during unsolicited read */
         bool hold_state_flag; /* status of hold state (independent from fsm states) */
         int hold_exit_status; /* hold exit parameter with status */
         char const *write_buf; /* working buffer pointer used for asynch writing to io */
         int write_state; /* before, data, after flush io write state */
         cat_state write_state_after; /* parser state to set after flush io write */
 
-        struct cat_unsolicited_cmd unsolicited_cmd_buffer[CAT_UNSOLICITED_CMD_BUFFER_SIZE]; /* buffer with unsolicited commands used to unsolicited event */
-        size_t unsolicited_cmd_buffer_tail; /* tail index of unsolicited cmd buffer */
-        size_t unsolicited_cmd_buffer_head; /* head index of unsolicited cmd buffer */
-        size_t unsolicited_cmd_buffer_items_count; /* number of unsolicited cmd in buffer */
-        bool process_unsolicited_cmd; /* flag indicating if processing unsolicited cmd is in progress */
+        struct cat_unsolicited_fsm unsolicited_fsm;
 };
 
 /**
@@ -443,9 +486,10 @@ struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, 
  * This only matters in multithreaded environments, it does not matter for one thread.
  * 
  * @param self pointer to at command parser object
+ * @param fsm type of internal state machine to check current command
  * @return pointer to command which is currently processed, NULL if no command is processed
  */
-struct cat_command const* cat_get_processed_command(struct cat_object *self);
+struct cat_command const* cat_get_processed_command(struct cat_object *self, cat_fsm_type fsm);
 
 /**
  * Function return unsolicited event command status.

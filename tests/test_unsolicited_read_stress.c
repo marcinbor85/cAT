@@ -115,7 +115,7 @@ static struct cat_descriptor desc = {
         .cmd_group_num = sizeof(cmd_desc) / sizeof(cmd_desc[0]),
 
         .buf = buf,
-        .buf_size = sizeof(buf)
+        .buf_size = sizeof(buf),
 };
 
 static int write_char(char ch)
@@ -167,7 +167,9 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_1);
 
-        cmd = cat_get_processed_command(&at);
+        cmd = cat_get_processed_command(&at, CAT_FSM_TYPE_ATCMD);
+        assert(cmd == NULL);
+        cmd = cat_get_processed_command(&at, CAT_FSM_TYPE_UNSOLICITED);
         assert(cmd == NULL);
         s = cat_is_unsolicited_event_buffered(&at, &u_cmds[0], CAT_CMD_TYPE_READ);
         assert(s == CAT_STATUS_OK);
@@ -176,7 +178,7 @@ int main(int argc, char **argv)
 
         while (events > 0) {
                 s = cat_is_unsolicited_buffer_full(&at);
-                cmd = cat_get_processed_command(&at);
+                cmd = cat_get_processed_command(&at, CAT_FSM_TYPE_UNSOLICITED);
                 if ((s == CAT_STATUS_OK) && (cmd == NULL)) {
                         var_u1 = events;
                         s = cat_trigger_unsolicited_event(&at, &u_cmds[0], CAT_CMD_TYPE_READ);
@@ -196,12 +198,14 @@ int main(int argc, char **argv)
         }
 
         while (cat_service(&at) != 0) {};
-        cmd = cat_get_processed_command(&at);
+        cmd = cat_get_processed_command(&at, CAT_FSM_TYPE_ATCMD);
+        assert(cmd == NULL);
+        cmd = cat_get_processed_command(&at, CAT_FSM_TYPE_UNSOLICITED);
         assert(cmd == NULL);
 
-        assert(strcmp(ack_results, "\n+UCMD=4\n\n+UCMD=3\n\n+UCMD=2\n\n+UCMD=1\n\n+CMD=1\n\nOK\n") == 0);
-        assert(strcmp(read_results, " read:+UCMD read:+UCMD read:+UCMD read:+UCMD read:+CMD") == 0);
-        assert(strcmp(var_read_results, " var_read:U1 var_read:U1 var_read:U1 var_read:U1 var_read:X") == 0);
+        assert(strcmp(ack_results, "\n+UCMD=4\n\n+CMD=1\n\n+UCMD=3\n\nOK\n\n+UCMD=2\n\n+UCMD=1\n") == 0);
+        assert(strcmp(read_results, " read:+UCMD read:+CMD read:+UCMD read:+UCMD read:+UCMD") == 0);
+        assert(strcmp(var_read_results, " var_read:U1 var_read:X var_read:U1 var_read:U1 var_read:U1") == 0);
 
 	return 0;
 }
