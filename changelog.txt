@@ -4,6 +4,9 @@ TODO:
 - documentation updated (buffer sized, return enum types, write variable nums, buf size hints)
 - helper setters and getters for variables
 
+0.10.2
+* add context filed to commands
+
 0.10.1
 * single working buffer insteads of two separated for atcmd and unsolicited events
 

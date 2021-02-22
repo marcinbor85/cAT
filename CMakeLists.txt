@@ -12,7 +12,7 @@ include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
 add_library( cat SHARED ${SRC_FILES} )
-set_target_properties( cat PROPERTIES VERSION 0.10.1 SOVERSION 1 )
+set_target_properties( cat PROPERTIES VERSION 0.10.2 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
 
 install( TARGETS cat DESTINATION lib )

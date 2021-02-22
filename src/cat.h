@@ -252,6 +252,8 @@ struct cat_command {
         bool need_all_vars; /* flag to need all vars parsing */
         bool only_test; /* flag to disable read/write/run commands (only test auto description) */
         bool disable; /* flag to completely disable command */
+
+        void* context; /* pointer to optional context structure */
 };
 
 struct cat_command_group {
