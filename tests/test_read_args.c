@@ -44,6 +44,7 @@ static char var_string[16];
 static char const *input_text;
 static size_t input_index;
 static int common_cntr;
+static uint8_t ctx;
 
 static int cmd_read(const struct cat_command *cmd, uint8_t *data, size_t *data_size, const size_t max_data_size)
 {
@@ -63,12 +64,18 @@ static int common_var_read_handler(const struct cat_variable *var)
         return 0;
 }
 
+static void* var_int_data_getter(const struct cat_variable *var, void *context, size_t *data_size)
+{
+        *data_size = sizeof(var_int);
+        assert(context == &ctx);
+        return &var_int;
+}
+
 static struct cat_variable vars[] = {
         {
                 .type = CAT_VAR_INT_DEC,
-                .data = &var_int,
-                .data_size = sizeof(var_int),
-                .read = common_var_read_handler
+                .read = common_var_read_handler,
+                .data_getter = var_int_data_getter,
         },
         {
                 .type = CAT_VAR_UINT_DEC,
@@ -114,14 +121,16 @@ static struct cat_command cmds[] = {
                 .read = cmd_read,
 
                 .var = vars,
-                .var_num = sizeof(vars) / sizeof(vars[0])
+                .var_num = sizeof(vars) / sizeof(vars[0]),
+                .context = &ctx,
         },
         {
                 .name = "+TEST",
                 .read = cmd2_read,
 
                 .var = vars,
-                .var_num = sizeof(vars) / sizeof(vars[0])
+                .var_num = sizeof(vars) / sizeof(vars[0]),
+                .context = &ctx,
         },
 };
 

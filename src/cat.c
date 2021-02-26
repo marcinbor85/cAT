@@ -55,6 +55,35 @@ static inline size_t get_unsolicited_buf_size(struct cat_object *self)
         return (self->desc->unsolicited_buf != NULL) ? self->desc->unsolicited_buf_size : self->desc->buf_size >> 1;
 }
 
+static inline void* get_var_data(struct cat_object *self, const struct cat_variable *var)
+{
+        size_t dummy;
+        void *data;
+
+        (void)self;
+
+        if (var->data_getter == NULL) {
+                data = var->data;
+        } else {
+                data = var->data_getter(var, self->cmd->context, &dummy);
+        }
+        return data;
+}
+
+static inline size_t get_var_data_size(struct cat_object *self, const struct cat_variable *var)
+{
+        size_t data_size;
+
+        (void)self;
+
+        if (var->data_getter == NULL) {
+                data_size = var->data_size;
+        } else {
+                var->data_getter(var, self->cmd->context, &data_size);
+        }
+        return data_size;
+}
+
 static char to_upper(char ch)
 {
         return (ch >= 'a' && ch <= 'z') ? ch - ('a' - 'A') : ch;
@@ -1184,12 +1213,12 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
                 byte += convert_hex_char_to_value(ch);
 
                 if (state != 0) {
-                        if (size >= self->var->data_size)
+                        if (size >= get_var_data_size(self, self->var))
                                 return -1;
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 size++;
                         } else {
-                                ((uint8_t *)(self->var->data))[size++] = byte;
+                                ((uint8_t*)get_var_data(self, self->var))[size++] = byte;
                         }
                         byte = 0;
                 }
@@ -1228,12 +1257,12 @@ static int parse_buffer_string(struct cat_object *self)
                                 state = 3;
                                 break;
                         }
-                        if (size >= self->var->data_size)
+                        if (size >= get_var_data_size(self, self->var))
                                 return -1;
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 size++;
                         } else {
-                                ((uint8_t *)(self->var->data))[size++] = ch;
+                                ((char*)get_var_data(self, self->var))[size++] = ch;
                         }
                         break;
                 case 2:
@@ -1250,23 +1279,23 @@ static int parse_buffer_string(struct cat_object *self)
                         default:
                                 return -1;
                         }
-                        if (size >= self->var->data_size)
+                        if (size >= get_var_data_size(self, self->var))
                                 return -1;
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 size++;
                         } else {
-                                ((uint8_t *)(self->var->data))[size++] = ch;
+                                ((char*)get_var_data(self, self->var))[size++] = ch;
                         }
                         state = 1;
                         break;
                 case 3:
                         if ((ch == 0) || (ch == ',')) {
-                                if (size >= self->var->data_size)
+                                if (size >= get_var_data_size(self, self->var))
                                         return -1;
                                 if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                         self->write_size = 0;
                                 } else {
-                                        ((uint8_t *)(self->var->data))[size] = 0;
+                                        ((char*)get_var_data(self, self->var))[size] = 0;
                                         self->write_size = size;
                                 }
                                 return (ch == ',') ? 1 : 0;
@@ -1287,26 +1316,29 @@ static int validate_int_range(struct cat_object *self, int64_t val)
                 return 0;
         }
 
-        switch (self->var->data_size) {
+        size_t data_size = get_var_data_size(self, self->var);
+        uint8_t *data = get_var_data(self, self->var);
+
+        switch (data_size) {
         case 1:
                 if ((val < INT8_MIN) || (val > INT8_MAX))
                         return -1;
-                *(int8_t *)(self->var->data) = val;
+                *(int8_t *)(data) = val;
                 break;
         case 2:
                 if ((val < INT16_MIN) || (val > INT16_MAX))
                         return -1;
-                *(int16_t *)(self->var->data) = val;
+                *(int16_t *)(data) = val;
                 break;
         case 4:
                 if ((val < INT32_MIN) || (val > INT32_MAX))
                         return -1;
-                *(int32_t *)(self->var->data) = val;
+                *(int32_t *)(data) = val;
                 break;
         default:
                 return -1;
         }
-        self->write_size = self->var->data_size;
+        self->write_size = data_size;
         return 0;
 }
 
@@ -1317,26 +1349,29 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
                 return 0;
         }
 
-        switch (self->var->data_size) {
+        size_t data_size = get_var_data_size(self, self->var);
+        uint8_t *data = get_var_data(self, self->var);
+
+        switch (data_size) {
         case 1:
                 if (val > UINT8_MAX)
                         return -1;
-                *(uint8_t *)(self->var->data) = val;
+                *(uint8_t *)(data) = val;
                 break;
         case 2:
                 if (val > UINT16_MAX)
                         return -1;
-                *(uint16_t *)(self->var->data) = val;
+                *(uint16_t *)(data) = val;
                 break;
         case 4:
                 if (val > UINT32_MAX)
                         return -1;
-                *(uint32_t *)(self->var->data) = val;
+                *(uint32_t *)(data) = val;
                 break;
         default:
                 return -1;
         }
-        self->write_size = self->var->data_size;
+        self->write_size = data_size;
         return 0;
 }
 
@@ -1453,15 +1488,18 @@ static int format_int_decimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        switch (var->data_size) {
+        size_t data_size = get_var_data_size(self, var);
+        uint8_t *data = get_var_data(self, var);
+
+        switch (data_size) {
         case 1:
-                val = *(int8_t *)var->data;
+                val = *(int8_t *)data;
                 break;
         case 2:
-                val = *(int16_t *)var->data;
+                val = *(int16_t *)data;
                 break;
         case 4:
-                val = *(int32_t *)var->data;
+                val = *(int32_t *)data;
                 break;
         default:
                 return -1;
@@ -1485,15 +1523,18 @@ static int format_uint_decimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        switch (var->data_size) {
+        size_t data_size = get_var_data_size(self, var);
+        uint8_t *data = get_var_data(self, var);
+
+        switch (data_size) {
         case 1:
-                val = *(uint8_t *)var->data;
+                val = *(uint8_t *)data;
                 break;
         case 2:
-                val = *(uint16_t *)var->data;
+                val = *(uint16_t *)data;
                 break;
         case 4:
-                val = *(uint32_t *)var->data;
+                val = *(uint32_t *)data;
                 break;
         default:
                 return -1;
@@ -1518,17 +1559,20 @@ static int format_num_hexadecimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        switch (var->data_size) {
+        size_t data_size = get_var_data_size(self, var);
+        uint8_t *data = get_var_data(self, var);
+
+        switch (data_size) {
         case 1:
-                val = *(uint8_t *)var->data;
+                val = *(uint8_t *)data;
                 strcpy(fstr, "0x%02X");
                 break;
         case 2:
-                val = *(uint16_t *)var->data;
+                val = *(uint16_t *)data;
                 strcpy(fstr, "0x%04X");
                 break;
         case 4:
-                val = *(uint32_t *)var->data;
+                val = *(uint32_t *)data;
                 strcpy(fstr, "0x%08X");
                 break;
         default:
@@ -1555,8 +1599,10 @@ static int format_buffer_hexadecimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        buf = var->data;
-        for (i = 0; i < var->data_size; i++) {
+        size_t data_size = get_var_data_size(self, var);
+
+        buf = get_var_data(self, var);
+        for (i = 0; i < data_size; i++) {
                 if (var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
                         val = 0;
                 } else {
@@ -1584,13 +1630,13 @@ static int format_buffer_string(struct cat_object *self, cat_fsm_type fsm)
         if (var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
                 buf_size = 0;
         } else {
-                buf_size = var->data_size;
+                buf_size = get_var_data_size(self, var);
         }
 
         if (print_string_to_buf(self, "\"", fsm) != 0)
                 return -1;
 
-        buf = var->data;
+        buf = (char*)get_var_data(self, var);
         for (i = 0; i < buf_size; i++) {
                 ch = buf[i];
                 if (ch == 0)
@@ -1659,9 +1705,11 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                 break;
         }
 
+        size_t data_size = get_var_data_size(self, var);
+
         switch (var->type) {
         case CAT_VAR_INT_DEC:
-                switch (var->data_size) {
+                switch (data_size) {
                 case 1:
                         strcpy(var_type, "INT8");
                         break;
@@ -1676,7 +1724,7 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                 }
                 break;
         case CAT_VAR_UINT_DEC:
-                switch (var->data_size) {
+                switch (data_size) {
                 case 1:
                         strcpy(var_type, "UINT8");
                         break;
@@ -1691,7 +1739,7 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                 }
                 break;
         case CAT_VAR_NUM_HEX:
-                switch (var->data_size) {
+                switch (data_size) {
                 case 1:
                         strcpy(var_type, "HEX8");
                         break;

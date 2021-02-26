@@ -97,6 +97,19 @@ typedef int (*cat_var_write_handler)(const struct cat_variable *var, const size_
  * */
 typedef int (*cat_var_read_handler)(const struct cat_variable *var);
 
+/**
+ * Data getter for variable.
+ * The purpose of this function is to replace statically allocated data and data_size fields
+ * with function pointer with context. Then the data and data_size from this getter would be
+ * changed and returned runtime.
+ * 
+ * @param var - pointer to struct descriptor of parsed variable
+ * @param context - command context
+ * @param size - pointer to variable where should be placed data size
+ * @return pointer to data array from context
+ */
+typedef void* (*cat_var_data_getter)(const struct cat_variable *var, void *context, size_t *data_size);
+
 struct cat_variable {
         const char *name; /* variable name (optional - using only for auto format test command response) */
         cat_var_type type; /* variable type (needed for parsing and validating) */
@@ -106,6 +119,8 @@ struct cat_variable {
 
         cat_var_write_handler write; /* write variable handler */
         cat_var_read_handler read; /* read variable handler */
+
+        cat_var_data_getter data_getter; /* optional data getter for dynamic linking data and data_size */
 };
 
 /* enum type with command callbacks return values meaning */
