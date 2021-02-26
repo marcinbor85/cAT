@@ -6,6 +6,7 @@ TODO:
 
 0.11.0
 * optional context in commands and data_getter in variables
+* optional extended read and write variable handler with parent command
 
 0.10.1
 * single working buffer insteads of two separated for atcmd and unsolicited events

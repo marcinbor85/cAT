@@ -55,31 +55,65 @@ static inline size_t get_unsolicited_buf_size(struct cat_object *self)
         return (self->desc->unsolicited_buf != NULL) ? self->desc->unsolicited_buf_size : self->desc->buf_size >> 1;
 }
 
-static inline void* get_var_data(struct cat_object *self, const struct cat_variable *var)
+static struct cat_variable* get_var_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return (struct cat_variable*)self->var;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return (struct cat_variable*)self->unsolicited_fsm.var;
+        default:
+                assert(false);
+        }
+
+        return NULL;
+}
+
+static struct cat_command* get_command_by_fsm(struct cat_object *self, cat_fsm_type fsm)
+{
+        assert(self != NULL);
+        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
+
+        switch (fsm) {
+        case CAT_FSM_TYPE_ATCMD:
+                return (struct cat_command*)self->cmd;
+        case CAT_FSM_TYPE_UNSOLICITED:
+                return (struct cat_command*)self->unsolicited_fsm.cmd;
+        default:
+                assert(false);
+        }
+
+        return NULL;
+}
+
+static inline void* get_var_data(struct cat_object *self, cat_fsm_type fsm)
 {
         size_t dummy;
         void *data;
-
-        (void)self;
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
 
         if (var->data_getter == NULL) {
                 data = var->data;
         } else {
-                data = var->data_getter(var, self->cmd->context, &dummy);
+                data = var->data_getter(var, cmd->context, &dummy);
         }
         return data;
 }
 
-static inline size_t get_var_data_size(struct cat_object *self, const struct cat_variable *var)
+static inline size_t get_var_data_size(struct cat_object *self, cat_fsm_type fsm)
 {
         size_t data_size;
-
-        (void)self;
+        struct cat_variable *var = get_var_by_fsm(self, fsm);
+        struct cat_command *cmd = get_command_by_fsm(self, fsm);
 
         if (var->data_getter == NULL) {
                 data_size = var->data_size;
         } else {
-                var->data_getter(var, self->cmd->context, &data_size);
+                var->data_getter(var, cmd->context, &data_size);
         }
         return data_size;
 }
@@ -255,23 +289,6 @@ cat_status cat_is_unsolicited_buffer_full(struct cat_object *self)
                 return CAT_STATUS_ERROR_MUTEX_UNLOCK;
 
         return (s != false) ? CAT_STATUS_ERROR_BUFFER_FULL : CAT_STATUS_OK;
-}
-
-static struct cat_command* get_command_by_fsm(struct cat_object *self, cat_fsm_type fsm)
-{
-        assert(self != NULL);
-        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
-
-        switch (fsm) {
-        case CAT_FSM_TYPE_ATCMD:
-                return (struct cat_command*)self->cmd;
-        case CAT_FSM_TYPE_UNSOLICITED:
-                return (struct cat_command*)self->unsolicited_fsm.cmd;
-        default:
-                assert(false);
-        }
-
-        return NULL;
 }
 
 struct cat_command const* cat_get_processed_command(struct cat_object *self, cat_fsm_type fsm)
@@ -658,23 +675,6 @@ static void reset_position(struct cat_object *self, cat_fsm_type fsm)
         default:
                 assert(false);
         }
-}
-
-static struct cat_variable* get_var_by_fsm(struct cat_object *self, cat_fsm_type fsm)
-{
-        assert(self != NULL);
-        assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
-
-        switch (fsm) {
-        case CAT_FSM_TYPE_ATCMD:
-                return (struct cat_variable*)self->var;
-        case CAT_FSM_TYPE_UNSOLICITED:
-                return (struct cat_variable*)self->unsolicited_fsm.var;
-        default:
-                assert(false);
-        }
-
-        return NULL;
 }
 
 static int print_response_test(struct cat_object *self, cat_fsm_type fsm)
@@ -1213,12 +1213,12 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
                 byte += convert_hex_char_to_value(ch);
 
                 if (state != 0) {
-                        if (size >= get_var_data_size(self, self->var))
+                        if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
                                 return -1;
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 size++;
                         } else {
-                                ((uint8_t*)get_var_data(self, self->var))[size++] = byte;
+                                ((uint8_t*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = byte;
                         }
                         byte = 0;
                 }
@@ -1257,12 +1257,12 @@ static int parse_buffer_string(struct cat_object *self)
                                 state = 3;
                                 break;
                         }
-                        if (size >= get_var_data_size(self, self->var))
+                        if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
                                 return -1;
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 size++;
                         } else {
-                                ((char*)get_var_data(self, self->var))[size++] = ch;
+                                ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = ch;
                         }
                         break;
                 case 2:
@@ -1279,23 +1279,23 @@ static int parse_buffer_string(struct cat_object *self)
                         default:
                                 return -1;
                         }
-                        if (size >= get_var_data_size(self, self->var))
+                        if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
                                 return -1;
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 size++;
                         } else {
-                                ((char*)get_var_data(self, self->var))[size++] = ch;
+                                ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = ch;
                         }
                         state = 1;
                         break;
                 case 3:
                         if ((ch == 0) || (ch == ',')) {
-                                if (size >= get_var_data_size(self, self->var))
+                                if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
                                         return -1;
                                 if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                         self->write_size = 0;
                                 } else {
-                                        ((char*)get_var_data(self, self->var))[size] = 0;
+                                        ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size] = 0;
                                         self->write_size = size;
                                 }
                                 return (ch == ',') ? 1 : 0;
@@ -1316,8 +1316,8 @@ static int validate_int_range(struct cat_object *self, int64_t val)
                 return 0;
         }
 
-        size_t data_size = get_var_data_size(self, self->var);
-        uint8_t *data = get_var_data(self, self->var);
+        size_t data_size = get_var_data_size(self, CAT_FSM_TYPE_ATCMD);
+        uint8_t *data = get_var_data(self, CAT_FSM_TYPE_ATCMD);
 
         switch (data_size) {
         case 1:
@@ -1349,8 +1349,8 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
                 return 0;
         }
 
-        size_t data_size = get_var_data_size(self, self->var);
-        uint8_t *data = get_var_data(self, self->var);
+        size_t data_size = get_var_data_size(self, CAT_FSM_TYPE_ATCMD);
+        uint8_t *data = get_var_data(self, CAT_FSM_TYPE_ATCMD);
 
         switch (data_size) {
         case 1:
@@ -1432,9 +1432,18 @@ static cat_status parse_write_args(struct cat_object *self)
                 break;
         }
 
-        if ((self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
-                ack_error(self);
-                return CAT_STATUS_BUSY;
+        if ((self->var->write != NULL) || (self->var->write_ex != NULL)) {
+                if (self->var->write != NULL) {
+                        if (self->var->write(self->var, self->write_size) != 0) {
+                                ack_error(self);
+                                return CAT_STATUS_BUSY;
+                        }
+                } else {
+                        if (self->var->write_ex(self->var, self->cmd, self->write_size) != 0) {
+                                ack_error(self);
+                                return CAT_STATUS_BUSY;
+                        }
+                }
         }
 
         if ((++self->index < self->cmd->var_num) && (stat > 0)) {
@@ -1488,8 +1497,8 @@ static int format_int_decimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        size_t data_size = get_var_data_size(self, var);
-        uint8_t *data = get_var_data(self, var);
+        size_t data_size = get_var_data_size(self, fsm);
+        uint8_t *data = get_var_data(self, fsm);
 
         switch (data_size) {
         case 1:
@@ -1523,8 +1532,8 @@ static int format_uint_decimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        size_t data_size = get_var_data_size(self, var);
-        uint8_t *data = get_var_data(self, var);
+        size_t data_size = get_var_data_size(self, fsm);
+        uint8_t *data = get_var_data(self, fsm);
 
         switch (data_size) {
         case 1:
@@ -1559,8 +1568,8 @@ static int format_num_hexadecimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        size_t data_size = get_var_data_size(self, var);
-        uint8_t *data = get_var_data(self, var);
+        size_t data_size = get_var_data_size(self, fsm);
+        uint8_t *data = get_var_data(self, fsm);
 
         switch (data_size) {
         case 1:
@@ -1599,9 +1608,9 @@ static int format_buffer_hexadecimal(struct cat_object *self, cat_fsm_type fsm)
 
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        size_t data_size = get_var_data_size(self, var);
+        size_t data_size = get_var_data_size(self, fsm);
 
-        buf = get_var_data(self, var);
+        buf = get_var_data(self, fsm);
         for (i = 0; i < data_size; i++) {
                 if (var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
                         val = 0;
@@ -1630,13 +1639,13 @@ static int format_buffer_string(struct cat_object *self, cat_fsm_type fsm)
         if (var->access == CAT_VAR_ACCESS_WRITE_ONLY) {
                 buf_size = 0;
         } else {
-                buf_size = get_var_data_size(self, var);
+                buf_size = get_var_data_size(self, fsm);
         }
 
         if (print_string_to_buf(self, "\"", fsm) != 0)
                 return -1;
 
-        buf = (char*)get_var_data(self, var);
+        buf = (char*)get_var_data(self, fsm);
         for (i = 0; i < buf_size; i++) {
                 ch = buf[i];
                 if (ch == 0)
@@ -1705,7 +1714,7 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                 break;
         }
 
-        size_t data_size = get_var_data_size(self, var);
+        size_t data_size = get_var_data_size(self, fsm);
 
         switch (var->type) {
         case CAT_VAR_INT_DEC:
@@ -1826,12 +1835,21 @@ static cat_status format_read_args(struct cat_object *self, cat_fsm_type fsm)
 
         assert(self != NULL);
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
-
+        
         struct cat_variable *var = get_var_by_fsm(self, fsm);
 
-        if ((var->read != NULL) && (var->read(var) != 0)) {
-                end_processing_with_error(self, fsm);
-                return CAT_STATUS_BUSY;
+        if ((var->read != NULL) || (var->read_ex != NULL)) {
+                if (var->read != NULL) {
+                        if (var->read(var) != 0) {
+                                end_processing_with_error(self, fsm);
+                                return CAT_STATUS_BUSY;
+                        }
+                } else {
+                        if (var->read_ex(var, get_command_by_fsm(self, fsm)) != 0) {
+                                end_processing_with_error(self, fsm);
+                                return CAT_STATUS_BUSY;
+                        }
+                }
         }
 
         switch (var->type) {

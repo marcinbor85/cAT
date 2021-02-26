@@ -98,6 +98,33 @@ typedef int (*cat_var_write_handler)(const struct cat_variable *var, const size_
 typedef int (*cat_var_read_handler)(const struct cat_variable *var);
 
 /**
+ * Write variable extended function handler
+ * 
+ * This callback function is called after variable update immediatly.
+ * User application can validate writed value and check for amount of data size was written.
+ * This handler is optional, so when is not defined, operations will be fully automatically.
+ * 
+ * @param var - pointer to struct descriptor of parsed variable
+ * @param cmd - pointer to variable parent command structure
+ * @param write_size - size of data was written (useful especially with hexbuf var type)
+ * @return 0 - ok, else error and stop parsing
+ * */
+typedef int (*cat_var_write_ex_handler)(const struct cat_variable *var, const struct cat_command *cmd, const size_t write_size);
+
+/**
+ * Read variable function handler
+ * 
+ * This callback function is called just before variable value read.
+ * User application can copy data from private fields to variable connected with parsed command.
+ * This handler is optional, so when is not defined, operations will be fully automatically.
+ * 
+ * @param var - pointer to struct descriptor of parsed variable
+ * @param cmd - pointer to variable parent command structure
+ * @return 0 - ok, else error and stop parsing
+ * */
+typedef int (*cat_var_read_ex_handler)(const struct cat_variable *var, const struct cat_command *cmd);
+
+/**
  * Data getter for variable.
  * The purpose of this function is to replace statically allocated data and data_size fields
  * with function pointer with context. Then the data and data_size from this getter would be
@@ -119,6 +146,8 @@ struct cat_variable {
 
         cat_var_write_handler write; /* write variable handler */
         cat_var_read_handler read; /* read variable handler */
+        cat_var_write_ex_handler write_ex; /* optional write variable extended handler */
+        cat_var_read_ex_handler read_ex; /* optional read variable extended handler */
 
         cat_var_data_getter data_getter; /* optional data getter for dynamic linking data and data_size */
 };
