@@ -1192,6 +1192,7 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
         uint8_t byte = 0;
         int state = 0;
         size_t size = 0;
+        size_t var_size = get_var_data_size(self, CAT_FSM_TYPE_ATCMD);
 
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
@@ -1213,12 +1214,16 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
                 byte += convert_hex_char_to_value(ch);
 
                 if (state != 0) {
-                        if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
-                                return -1;
-                        if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
-                                size++;
+                        if (var_size > 0) {
+                                if (size >= var_size)
+                                        return -1;
+                                if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
+                                        size++;
+                                } else {
+                                        ((uint8_t*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = byte;
+                                }
                         } else {
-                                ((uint8_t*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = byte;
+                                size++;
                         }
                         byte = 0;
                 }
@@ -1236,6 +1241,7 @@ static int parse_buffer_string(struct cat_object *self)
         char ch;
         int state = 0;
         size_t size = 0;
+        size_t var_size = get_var_data_size(self, CAT_FSM_TYPE_ATCMD);
 
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
@@ -1257,12 +1263,16 @@ static int parse_buffer_string(struct cat_object *self)
                                 state = 3;
                                 break;
                         }
-                        if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
-                                return -1;
-                        if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
-                                size++;
+                        if (var_size > 0) {
+                                if (size >= var_size)
+                                        return -1;
+                                if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
+                                        size++;
+                                } else {
+                                        ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = ch;
+                                }
                         } else {
-                                ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = ch;
+                                size++;
                         }
                         break;
                 case 2:
@@ -1279,24 +1289,32 @@ static int parse_buffer_string(struct cat_object *self)
                         default:
                                 return -1;
                         }
-                        if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
-                                return -1;
-                        if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
-                                size++;
+                        if (var_size > 0) {
+                                if (size >= var_size)
+                                        return -1;
+                                if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
+                                        size++;
+                                } else {
+                                        ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = ch;
+                                }
                         } else {
-                                ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size++] = ch;
+                                size++;
                         }
                         state = 1;
                         break;
                 case 3:
                         if ((ch == 0) || (ch == ',')) {
-                                if (size >= get_var_data_size(self, CAT_FSM_TYPE_ATCMD))
-                                        return -1;
-                                if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
-                                        self->write_size = 0;
+                                if (var_size > 0) {
+                                        if (size >= var_size)
+                                                return -1;
+                                        if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
+                                                self->write_size = 0;
+                                        } else {
+                                                ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size] = 0;
+                                                self->write_size = size;
+                                        }
                                 } else {
-                                        ((char*)get_var_data(self, CAT_FSM_TYPE_ATCMD))[size] = 0;
-                                        self->write_size = size;
+                                        self->write_size = 0;
                                 }
                                 return (ch == ',') ? 1 : 0;
                         } else {
@@ -1336,7 +1354,8 @@ static int validate_int_range(struct cat_object *self, int64_t val)
                 *(int32_t *)(data) = val;
                 break;
         default:
-                return -1;
+                self->write_size = 0;
+                return 0;
         }
         self->write_size = data_size;
         return 0;
@@ -1369,7 +1388,8 @@ static int validate_uint_range(struct cat_object *self, uint64_t val)
                 *(uint32_t *)(data) = val;
                 break;
         default:
-                return -1;
+                self->write_size = 0;
+                return 0;
         }
         self->write_size = data_size;
         return 0;
