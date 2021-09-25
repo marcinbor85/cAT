@@ -1395,6 +1395,8 @@ static cat_status parse_write_args(struct cat_object *self)
                         return CAT_STATUS_BUSY;
                 }
                 break;
+        default:
+                return CAT_STATUS_ERROR;
         }
 
         if ((self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
@@ -1802,6 +1804,8 @@ static cat_status format_read_args(struct cat_object *self, cat_fsm_type fsm)
         case CAT_VAR_BUF_STRING:
                 stat = format_buffer_string(self, fsm);
                 break;
+        default:
+                return CAT_STATUS_ERROR;
         }
 
         if (stat < 0) {
