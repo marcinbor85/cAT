@@ -810,7 +810,7 @@ static cat_status update_command(struct cat_object *self)
                 if (self->length > cmd_name_len) {
                         set_cmd_state(self, self->index, CAT_CMD_STATE_NOT_MATCH);
                 } else if (to_upper(cmd->name[self->length - 1]) != self->current_char) {
-                        set_cmd_state(self, self->index, CAT_CMD_STATE_NOT_MATCH);
+                        set_cmd_state(self, self->index, CAT_CMD_STATE_PARTIAL_MATCH);
                 } else if (self->length == cmd_name_len) {
                         set_cmd_state(self, self->index, CAT_CMD_STATE_FULL_MATCH);
                 }
@@ -1746,24 +1746,26 @@ static cat_status next_format_var_by_fsm(struct cat_object *self, cat_fsm_type f
 
         switch (fsm) {
         case CAT_FSM_TYPE_ATCMD:
-                if (++self->index < cmd->var_num) {
+                if (self->index < cmd->var_num) {
                         if (self->position >= get_atcmd_buf_size(self)) {
                                 end_processing_with_error(self, fsm);
                                 return CAT_STATUS_BUSY;
                         }
                         get_atcmd_buf(self)[self->position++] = ',';
                         self->var = &cmd->var[self->index];
+                        self->index++;
                         return CAT_STATUS_BUSY;
                 }
                 break;
         case CAT_FSM_TYPE_UNSOLICITED:
-                if (++self->unsolicited_fsm.index < cmd->var_num) {
+                if (self->unsolicited_fsm.index < cmd->var_num) {
                         if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self)) {
                                 end_processing_with_error(self, fsm);
                                 return CAT_STATUS_BUSY;
                         }
                         get_unsolicited_buf(self)[self->unsolicited_fsm.position++] = ',';
                         self->unsolicited_fsm.var = &cmd->var[self->unsolicited_fsm.index];
+                        self->unsolicited_fsm.index++;
                         return CAT_STATUS_BUSY;
                 }
                 break;

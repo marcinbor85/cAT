@@ -197,7 +197,7 @@ static struct cat_command cmds[] = {
 };
 
 /* working buffer */
-static char buf[128];
+static uint8_t buf[256];
 
 /* declaring parser descriptor */
 static struct cat_command_group cmd_group = {
