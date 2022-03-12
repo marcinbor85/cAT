@@ -1,11 +1,18 @@
-language: c
+language: cpp
+compiler: gcc
 
-compiler:
-  - gcc
+os: linux
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-7
 
-before_script:
-  - mkdir build
-  - cd build
-  - cmake ..
-
-script: make && make test
+script:
+  - export CC=gcc-7
+  - export CXX=g++-7
+  - cmake --version
+  - cmake .
+  - make
+  - make test
