@@ -173,7 +173,7 @@ static cat_status pop_unsolicited_cmd(struct cat_object *self, struct cat_comman
 
         if (is_unsolicited_buffer_empty(self) != false)
                 return CAT_STATUS_ERROR_BUFFER_EMPTY;
-        
+
         item = &self->unsolicited_fsm.unsolicited_cmd_buffer[self->unsolicited_fsm.unsolicited_cmd_buffer_head];
 
         *cmd = item->cmd;
@@ -181,9 +181,9 @@ static cat_status pop_unsolicited_cmd(struct cat_object *self, struct cat_comman
 
         if (++self->unsolicited_fsm.unsolicited_cmd_buffer_head >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
                 self->unsolicited_fsm.unsolicited_cmd_buffer_head = 0;
-        
+
         self->unsolicited_fsm.unsolicited_cmd_buffer_items_count--;
-        
+
         return CAT_STATUS_OK;
 }
 
@@ -197,7 +197,7 @@ static cat_status push_unsolicited_cmd(struct cat_object *self, struct cat_comma
 
         if (is_unsolicited_buffer_full(self) != false)
                 return CAT_STATUS_ERROR_BUFFER_FULL;
-        
+
         item = &self->unsolicited_fsm.unsolicited_cmd_buffer[self->unsolicited_fsm.unsolicited_cmd_buffer_tail];
 
         item->cmd = cmd;
@@ -205,9 +205,9 @@ static cat_status push_unsolicited_cmd(struct cat_object *self, struct cat_comma
 
         if (++self->unsolicited_fsm.unsolicited_cmd_buffer_tail >= CAT_UNSOLICITED_CMD_BUFFER_SIZE)
                 self->unsolicited_fsm.unsolicited_cmd_buffer_tail = 0;
-        
+
         self->unsolicited_fsm.unsolicited_cmd_buffer_items_count++;
-        
+
         return CAT_STATUS_OK;
 }
 
@@ -258,7 +258,7 @@ cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat
         assert(self != NULL);
         assert(cmd != NULL);
         assert(type < CAT_CMD_TYPE__TOTAL_NUM);
-        
+
         size_t num = self->unsolicited_fsm.unsolicited_cmd_buffer_items_count;
         size_t index = self->unsolicited_fsm.unsolicited_cmd_buffer_head;
         cat_status ret = CAT_STATUS_OK;
@@ -266,7 +266,7 @@ cat_status cat_is_unsolicited_event_buffered(struct cat_object *self, struct cat
 
         if ((self->unsolicited_fsm.cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (self->unsolicited_fsm.cmd_type == type)))
                 ret =  CAT_STATUS_BUSY;
-                
+
         while ((num > 0) && (ret == CAT_STATUS_OK)) {
                 item = &self->unsolicited_fsm.unsolicited_cmd_buffer[index];
                 if ((item->cmd == cmd) && ((type == CAT_CMD_TYPE_NONE) || (item->type == type)))
@@ -435,10 +435,10 @@ static struct cat_command const* get_command_by_index(struct cat_object *self, s
                         j += cmd_group->cmd_num;
                         continue;
                 }
-                
+
                 return &cmd_group->cmd[index - j];
         }
-        
+
         return NULL;
 }
 
@@ -672,7 +672,7 @@ static int print_response_test(struct cat_object *self, cat_fsm_type fsm)
                         break;
                 default:
                         assert(false);
-                }                
+                }
                 return 0;
         }
 
@@ -685,8 +685,8 @@ static int print_response_test(struct cat_object *self, cat_fsm_type fsm)
                 break;
         default:
                 assert(false);
-        }                
-        
+        }
+
         return 0;
 }
 
@@ -761,7 +761,7 @@ static bool is_command_disable(struct cat_object *self, size_t index)
                 if (cmd_group->cmd[index - j].disable != false)
                         return true;
         }
-        
+
         return false;
 }
 
@@ -879,7 +879,7 @@ static void start_processing_format_test_args(struct cat_object *self, cat_fsm_t
                         break;
                 default:
                         assert(false);
-                }                
+                }
                 return;
         }
 
@@ -976,7 +976,7 @@ static void start_processing_format_read_args(struct cat_object *self, cat_fsm_t
                 default:
                         assert(false);
                 }
-                
+
                 return;
         }
         if (cmd->read == NULL) {
@@ -1273,6 +1273,8 @@ static int parse_buffer_string(struct cat_object *self)
                         } else {
                                 return -1;
                         }
+                        break;
+                default:
                         break;
                 }
         }
@@ -1713,6 +1715,8 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
         case CAT_VAR_BUF_STRING:
                 strcpy(var_type, "STRING");
                 break;
+        default:
+                return -1;
         }
 
         if (print_string_to_buf(self, "<", fsm) != 0)
@@ -1830,7 +1834,7 @@ static cat_status format_read_args(struct cat_object *self, cat_fsm_type fsm)
                 default:
                         assert(false);
                 }
-                
+
                 return CAT_STATUS_BUSY;
         }
 
@@ -1844,7 +1848,7 @@ static cat_status format_read_args(struct cat_object *self, cat_fsm_type fsm)
         default:
                 assert(false);
         }
-        
+
         return CAT_STATUS_BUSY;
 }
 
@@ -2056,7 +2060,7 @@ static int print_current_cmd_full_name(struct cat_object *self, const char *suff
                         return -1;
                 self->length = 1;
         }
-        
+
         if (print_string_to_buf(self, "AT", CAT_FSM_TYPE_ATCMD) != 0)
                 return -1;
         if (print_string_to_buf(self, self->cmd->name, CAT_FSM_TYPE_ATCMD) != 0)
@@ -2084,7 +2088,7 @@ static void print_cmd_list(struct cat_object *self)
                 self->cmd_type = (self->cmd->only_test != false) ? CAT_CMD_TYPE_TEST : CAT_CMD_TYPE_RUN;
                 break;
         case CAT_CMD_TYPE_RUN:
-                if (self->cmd->run != NULL) {   
+                if (self->cmd->run != NULL) {
                         self->position = 0;
                         if (print_current_cmd_full_name(self, "") != 0) {
                                 ack_error(self);
@@ -2095,7 +2099,7 @@ static void print_cmd_list(struct cat_object *self)
                 self->cmd_type = CAT_CMD_TYPE_READ;
                 break;
         case CAT_CMD_TYPE_READ:
-                if ((self->cmd->read != NULL) || (is_variables_access_possible(self, self->cmd, CAT_VAR_ACCESS_READ_ONLY) != false)) {  
+                if ((self->cmd->read != NULL) || (is_variables_access_possible(self, self->cmd, CAT_VAR_ACCESS_READ_ONLY) != false)) {
                         self->position = 0;
                         if (print_current_cmd_full_name(self, "?") != 0) {
                                 ack_error(self);
@@ -2106,7 +2110,7 @@ static void print_cmd_list(struct cat_object *self)
                 self->cmd_type = CAT_CMD_TYPE_WRITE;
                 break;
         case CAT_CMD_TYPE_WRITE:
-                if (self->cmd->write != NULL || (is_variables_access_possible(self, self->cmd, CAT_VAR_ACCESS_WRITE_ONLY) != false)) {  
+                if (self->cmd->write != NULL || (is_variables_access_possible(self, self->cmd, CAT_VAR_ACCESS_WRITE_ONLY) != false)) {
                         self->position = 0;
                         if (print_current_cmd_full_name(self, "=") != 0) {
                                 ack_error(self);
@@ -2117,7 +2121,7 @@ static void print_cmd_list(struct cat_object *self)
                 self->cmd_type = CAT_CMD_TYPE_TEST;
                 break;
         case CAT_CMD_TYPE_TEST:
-                if (self->cmd->test != NULL || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {  
+                if (self->cmd->test != NULL || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {
                         self->position = 0;
                         if (print_current_cmd_full_name(self, "=?") != 0) {
                                 ack_error(self);
@@ -2467,6 +2471,8 @@ static cat_status process_io_write(struct cat_object *self)
                         break;
                 case CAT_WRITE_STATE_AFTER:
                         self->state = self->write_state_after;
+                        break;
+                default:
                         break;
                 }
                 return CAT_STATUS_BUSY;
