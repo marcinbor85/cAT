@@ -291,11 +291,11 @@ typedef enum {
         CAT_UNSOLICITED_STATE_READ_LOOP,
         CAT_UNSOLICITED_STATE_TEST_LOOP,
         CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE_WAIT,
-        CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE,        
+        CAT_UNSOLICITED_STATE_FLUSH_IO_WRITE,
         CAT_UNSOLICITED_STATE_AFTER_FLUSH_RESET,
         CAT_UNSOLICITED_STATE_AFTER_FLUSH_OK,
         CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_READ_ARGS,
-        CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS,    
+        CAT_UNSOLICITED_STATE_AFTER_FLUSH_FORMAT_TEST_ARGS,
 } cat_unsolicited_state;
 
 /* enum type with fsm type */
@@ -318,7 +318,7 @@ struct cat_unsolicited_fsm {
         char const *write_buf; /* working buffer pointer used for asynch writing to io */
         int write_state; /* before, data, after flush io write state */
         cat_unsolicited_state write_state_after; /* parser state to set after flush io write */
-        
+
         struct cat_unsolicited_cmd unsolicited_cmd_buffer[CAT_UNSOLICITED_CMD_BUFFER_SIZE]; /* buffer with unsolicited commands used to unsolicited event */
         size_t unsolicited_cmd_buffer_tail; /* tail index of unsolicited cmd buffer */
         size_t unsolicited_cmd_buffer_head; /* head index of unsolicited cmd buffer */

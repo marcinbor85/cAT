@@ -106,7 +106,7 @@ static struct cat_command_group cmd_group1 = {
 
 static struct cat_command_group cmd_group2 = {
         .name = "ext",
-        
+
         .cmd = cmds2,
         .cmd_num = sizeof(cmds2) / sizeof(cmds2[0]),
 };

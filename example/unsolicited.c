@@ -125,7 +125,7 @@ static cat_return_state scan_read(const struct cat_command *cmd, uint8_t *data, 
         scan_index++;
         if (scan_index > max)
                 return CAT_RETURN_STATE_HOLD_EXIT_OK;
-        
+
         load_scan_results(scan_index);
         cat_trigger_unsolicited_read(&at, &scan_cmd);
 

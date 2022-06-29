@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
         assert(strcmp(ack_results, "\n+CMD=1\n\n+CMD=2\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " read:+CMD read:+CMD") == 0);
-        
+
         ret = CAT_RETURN_STATE_NEXT;
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};

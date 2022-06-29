@@ -215,7 +215,7 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\n+CMD=2\n\n+CMD=3\n\ntest\n\nERROR\n") == 0);
         assert(strcmp(cmd_results, " run:+CMD read:+CMD read:+CMD read:+CMD read:+CMD") == 0);
         assert(var_x == 6);
-        
+
         ret = CAT_RETURN_STATE_HOLD_EXIT_ERROR;
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};

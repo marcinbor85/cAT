@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0 CMD:255") == 0);
 
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0,0 CMD:0,65535") == 0);
 
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_3);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0,0,0 CMD:1,1,4294967295") == 0);
 

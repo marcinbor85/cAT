@@ -73,7 +73,7 @@ static int bytesbuf_write(const struct cat_variable *var, size_t write_size)
 {
         int i = 0;
 
-        printf("bytes_buf variable updated %lu bytes internally to: ", write_size);        
+        printf("bytes_buf variable updated %lu bytes internally to: ", write_size);
         for (i = 0; i < sizeof(bytes_buf); i++)
                 printf("%02X", bytes_buf[i]);
         printf("\n");
@@ -84,7 +84,7 @@ static int bytesbuf_write(const struct cat_variable *var, size_t write_size)
 static int go_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num)
 {
         int i = 0;
-        
+
         printf("<%s>: x=%d y=%d msg=%s @ speed=%d\n",
                 cmd->name,
                 *(uint8_t*)(cmd->var[0].data),
@@ -92,7 +92,7 @@ static int go_write(const struct cat_command *cmd, const uint8_t *data, const si
                 msg,
                 speed
         );
-        
+
         printf("<bytes>: ");
         for (i = 0; i < sizeof(bytes_buf); i++)
                 printf("%02X", bytes_buf[i]);
@@ -169,7 +169,7 @@ static struct cat_variable set_vars[] = {
                 .data = &adr,
                 .data_size = sizeof(adr),
                 .write = adr_write,
-                .name = "address"                
+                .name = "address"
         },
         {
                 .type = CAT_VAR_BUF_HEX,

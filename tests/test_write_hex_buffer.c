@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nERROR\n\nOK\n\nOK\n") == 0);
         assert(strcmp(write_results, " CMD:aa CMD:12345678 CMD:ffAA") == 0);
 

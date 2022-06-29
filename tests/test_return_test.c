@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
         assert(strcmp(ack_results, "\n+CMD=<X:INT32[RW]>\n\n+CMD=<X:INT32[RW]>\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " test:+CMD test:+CMD") == 0);
-        
+
         ret = CAT_RETURN_STATE_NEXT;
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};

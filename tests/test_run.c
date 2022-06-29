@@ -152,6 +152,6 @@ int main(int argc, char **argv)
 
         assert(strcmp(ack_results, "\nOK\n\nERROR\n\r\nOK\r\n\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n") == 0);
         assert(strcmp(run_results, " A:A AP:AP +TEST:+TEST +TEST:+TEST FORCE:FORCE FORCE:FORCE") == 0);
-        
+
 	return 0;
 }

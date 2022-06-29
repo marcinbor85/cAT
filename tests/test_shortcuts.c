@@ -144,6 +144,6 @@ int main(int argc, char **argv)
 
         assert(strcmp(ack_results, "\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\nOK\n\nERROR\n\nOK\n\nOK\n\nOK\n\nOK\n\nOK\n\nOK\n\nOK\n") == 0);
         assert(strcmp(run_results, "+TEST +TEST_A +TEST_B +ONE +ONE +ONE +TWO +TWO ") == 0);
-        
+
 	return 0;
 }
