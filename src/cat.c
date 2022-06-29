@@ -495,7 +495,7 @@ static cat_status error_state(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case '\n':
@@ -529,7 +529,7 @@ static cat_status parse_prefix(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case 'T':
@@ -695,7 +695,7 @@ static cat_status parse_command(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case '\n':
@@ -831,7 +831,7 @@ static cat_status wait_read_acknowledge(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case '\n':
@@ -896,7 +896,7 @@ static cat_status wait_test_acknowledge(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case '\n':
@@ -1862,7 +1862,7 @@ static cat_status parse_command_args(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case '\n':
@@ -1968,7 +1968,7 @@ static cat_status process_idle_state(struct cat_object *self)
         assert(self != NULL);
 
         if (read_cmd_char(self) == 0)
-                return CAT_STATUS_OK;
+                return CAT_STATUS_AGAIN;
 
         switch (self->current_char) {
         case 'A':
@@ -2463,7 +2463,7 @@ static cat_status process_io_write(struct cat_object *self)
         }
 
         if (self->io->write(ch) != 1)
-                return CAT_STATUS_BUSY;
+                return CAT_STATUS_AGAIN;
 
         self->position++;
         return CAT_STATUS_BUSY;
@@ -2493,7 +2493,7 @@ static cat_status unsolicited_process_io_write(struct cat_object *self)
         }
 
         if (self->io->write(ch) != 1)
-                return CAT_STATUS_BUSY;
+                return CAT_STATUS_AGAIN;
 
         self->unsolicited_fsm.position++;
         return CAT_STATUS_BUSY;
