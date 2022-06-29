@@ -388,22 +388,23 @@ static void move_position_by_fsm(struct cat_object *self, size_t offset, cat_fsm
         }
 }
 
-static int print_string_to_buf(struct cat_object *self, const char *str, cat_fsm_type fsm)
+static int print_nstring_to_buf(struct cat_object *self, const char *str, size_t len, cat_fsm_type fsm)
 {
-        int written;
-        size_t len;
-
         assert(self != NULL);
         assert(fsm < CAT_FSM_TYPE__TOTAL_NUM);
 
-        len = get_left_buffer_space_by_fsm(self, fsm);
-        written = snprintf(get_current_buffer_by_fsm(self, fsm), len, "%s", str);
-
-        if ((written < 0) || ((size_t)written >= len))
+        if (len >= get_left_buffer_space_by_fsm(self, fsm))
                 return -1;
 
-        move_position_by_fsm(self, written, fsm);
+        memcpy(get_current_buffer_by_fsm(self, fsm), str, len);
+        move_position_by_fsm(self, len, fsm);
+        get_current_buffer_by_fsm(self, fsm)[0] = '\0';
         return 0;
+}
+
+static int print_string_to_buf(struct cat_object *self, const char *str, cat_fsm_type fsm)
+{
+        return print_nstring_to_buf(self, str, strlen(str), fsm);
 }
 
 static int read_cmd_char(struct cat_object *self)
@@ -1607,26 +1608,8 @@ static int format_buffer_string(struct cat_object *self, cat_fsm_type fsm)
                         if (print_string_to_buf(self, "\\n", fsm) != 0)
                                 return -1;
                 } else {
-                        switch (fsm) {
-                        case CAT_FSM_TYPE_ATCMD:
-                                if (self->position >= get_atcmd_buf_size(self))
-                                        return -1;
-                                get_atcmd_buf(self)[self->position++] = ch;
-                                if (self->position >= get_atcmd_buf_size(self))
-                                        return -1;
-                                get_atcmd_buf(self)[self->position] = 0;
-                                break;
-                        case CAT_FSM_TYPE_UNSOLICITED:
-                                if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self))
-                                        return -1;
-                                get_unsolicited_buf(self)[self->unsolicited_fsm.position++] = ch;
-                                if (self->unsolicited_fsm.position >= get_unsolicited_buf_size(self))
-                                        return -1;
-                                get_unsolicited_buf(self)[self->unsolicited_fsm.position] = 0;
-                                break;
-                        default:
-                                assert(false);
-                        }
+                        if (print_nstring_to_buf(self, &ch, 1, fsm) != 0)
+                                return -1;
                 }
         }
 
