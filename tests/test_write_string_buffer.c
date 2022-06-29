@@ -134,9 +134,9 @@ static const char test_case_2[] = "\nAT+SET=\"12345678\"\nAT+SET=\"\"\nAT+SET=\"
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -164,5 +164,5 @@ int main(int argc, char **argv)
         assert(var_write_size[2] == 6);
         assert(var_write_size[3] == 0);
 
-	return 0;
+        return 0;
 }

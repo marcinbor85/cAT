@@ -248,13 +248,13 @@ static struct cat_io_interface iface = {
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         while ((cat_service(&at) != 0) && (quit_flag == 0)) {};
 
         printf("Bye!\n");
 
-	return 0;
+        return 0;
 }

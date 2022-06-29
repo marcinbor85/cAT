@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 {
         cat_status s;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         ret = CAT_RETURN_STATE_ERROR;
         prepare_input(test_case_1);
@@ -232,5 +232,5 @@ int main(int argc, char **argv)
         assert(strcmp(cmd_results, " write:+CMD") == 0);
         assert(var_x == 2);
 
-	return 0;
+        return 0;
 }

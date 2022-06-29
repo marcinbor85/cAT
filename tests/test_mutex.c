@@ -150,9 +150,9 @@ static const char test_case_1[] = "\nAT\nAT+test\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, &mutex);
+        cat_init(&at, &desc, &iface, &mutex);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -181,5 +181,5 @@ int main(int argc, char **argv)
         assert(cat_service(&at) == CAT_STATUS_OK);
         assert(cat_is_busy(&at) == CAT_STATUS_OK);
 
-	return 0;
+        return 0;
 }

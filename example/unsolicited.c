@@ -239,7 +239,7 @@ static struct cat_io_interface iface = {
 int main(int argc, char **argv)
 {
         /* initializing */
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         /* main loop with exit code conditions */
         while ((cat_service(&at) != 0) && (quit_flag == 0)) {};
@@ -247,5 +247,5 @@ int main(int argc, char **argv)
         /* goodbye message */
         printf("Bye!\n");
 
-	return 0;
+        return 0;
 }

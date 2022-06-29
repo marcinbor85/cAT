@@ -141,12 +141,12 @@ static struct cat_io_interface iface = {
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
         struct cat_command const *cmd;
         struct cat_command_group const *cmd_group;
         struct cat_variable const *var;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         cmd = cat_search_command_by_name(&at, "A");
         assert(cmd == NULL);
@@ -220,5 +220,5 @@ int main(int argc, char **argv)
         var = cat_search_variable_by_name(&at, &cmds2[0], "var_apx2_1");
         assert(var == NULL);
 
-	return 0;
+        return 0;
 }

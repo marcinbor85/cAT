@@ -196,9 +196,9 @@ static const char test_case_2[] = "\nAT+TEST?\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -212,5 +212,5 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\n+TEST=test\n\nOK\n") == 0);
         assert(common_cntr == 7);
 
-	return 0;
+        return 0;
 }

@@ -327,14 +327,14 @@ static void print_raw_text(char *p)
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input("\nAT#HELP\n");
         while (cat_service(&at) != 0) {};
 
         assert(strcmp(ack_results, "\nAT+V1?\nAT+V1=\nAT+V1=?\n\nAT+V1RO?\nAT+V1RO=?\n\nAT+V1RW=\nAT+V1RW=?\n\nAT+V11?\nAT+V11=\nAT+V11=?\n\nAT+V11RO?\nAT+V11RO=\nAT+V11RO=?\n\nAT+V11WO?\nAT+V11WO=\nAT+V11WO=?\n\nAT+V2?\nAT+V2=\nAT+V2=?\n\nAT+V3?\nAT+V3=\nAT+V3=?\n\nAT+V4?\nAT+V4=\nAT+V4=?\n\nAT+V5\nAT+V5?\nAT+V5=\nAT+V5=?\n\nAT+S2=\n\nAT+S3?\nAT+S3=\n\nAT+S4?\nAT+S4=\nAT+S4=?\n\nAT+S5\nAT+S5?\nAT+S5=\nAT+S5=?\n\nAT+T1=?\n\nAT#HELP\n\nOK\n") == 0);
 
-	return 0;
+        return 0;
 }

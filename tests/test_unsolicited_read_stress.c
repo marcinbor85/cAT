@@ -163,7 +163,7 @@ int main(int argc, char **argv)
         int events = 4;
         struct cat_command const *cmd;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
 
@@ -207,5 +207,5 @@ int main(int argc, char **argv)
         assert(strcmp(read_results, " read:+UCMD read:+CMD read:+UCMD read:+UCMD read:+UCMD") == 0);
         assert(strcmp(var_read_results, " var_read:U1 var_read:X var_read:U1 var_read:U1 var_read:U1") == 0);
 
-	return 0;
+        return 0;
 }

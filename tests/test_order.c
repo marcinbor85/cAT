@@ -193,9 +193,9 @@ static const char test_case_1[] = "\nATE\n\nATE0\n\nATE1\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc_1, &iface, NULL);
+        cat_init(&at, &desc_1, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -219,5 +219,5 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\nOK\n\nOK\n\nOK\n") == 0);
         assert(strcmp(run_results, " E:E E0:E0 E1:E1") == 0);
 
-	return 0;
+        return 0;
 }

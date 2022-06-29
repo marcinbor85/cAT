@@ -143,9 +143,9 @@ static const char test_case_1[] = "\nAT\nAT+\nATA\r\nATAP\nATAPA\nAT+TEST\nAT+te
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -153,5 +153,5 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\nOK\n\nERROR\n\r\nOK\r\n\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n") == 0);
         assert(strcmp(run_results, " A:A AP:AP +TEST:+TEST +TEST:+TEST FORCE:FORCE FORCE:FORCE") == 0);
 
-	return 0;
+        return 0;
 }
