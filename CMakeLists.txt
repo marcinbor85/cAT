@@ -6,6 +6,8 @@ set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 
+add_compile_options("$<$<CONFIG:DEBUG>:-g>")
+
 enable_testing( )
 
 include_directories( ${PROJECT_SOURCE_DIR}/src )
@@ -26,6 +28,7 @@ add_executable( basic example/basic.c )
 target_link_libraries( basic cat )
 
 add_executable( unsolicited example/unsolicited.c )
+# target_compile_options(unsolicited PRIVATE -g)
 target_link_libraries( unsolicited cat )
 
 add_executable( test_parse tests/test_parse.c )
