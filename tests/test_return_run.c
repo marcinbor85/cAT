@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 {
         cat_status s;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         ret = CAT_RETURN_STATE_ERROR;
         prepare_input(test_case_1);
@@ -215,7 +215,7 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\n+CMD=2\n\n+CMD=3\n\ntest\n\nERROR\n") == 0);
         assert(strcmp(cmd_results, " run:+CMD read:+CMD read:+CMD read:+CMD read:+CMD") == 0);
         assert(var_x == 6);
-        
+
         ret = CAT_RETURN_STATE_HOLD_EXIT_ERROR;
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -232,5 +232,5 @@ int main(int argc, char **argv)
         assert(strcmp(cmd_results, " run:+CMD") == 0);
         assert(var_x == 2);
 
-	return 0;
+        return 0;
 }

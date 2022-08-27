@@ -165,13 +165,13 @@ static const char test_case_3[] = "\nAT+SET=0,0,-1\nAT+SET=0,0,0\nAT+SET=1,1,429
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0 CMD:255") == 0);
 
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0,0 CMD:0,65535") == 0);
 
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_3);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0,0,0 CMD:1,1,4294967295") == 0);
 
@@ -208,5 +208,5 @@ int main(int argc, char **argv)
         assert(var3 == 4294967295);
         assert(var3b == var3);
 
-	return 0;
+        return 0;
 }

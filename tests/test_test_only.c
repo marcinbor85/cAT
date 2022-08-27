@@ -153,9 +153,9 @@ static const char test_case_2[] = "\nATAP2=?\n\nATAP2?\n\nATAP2=1\n\nATAP2\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -169,5 +169,5 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\nap_test\n\nOK\n\nap_read\n\nOK\n\nOK\n\nOK\n") == 0);
         assert(strcmp(cmd_results, " test:AP2 read:AP2 write:AP2 run:AP2") == 0);
 
-	return 0;
+        return 0;
 }

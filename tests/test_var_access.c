@@ -414,9 +414,9 @@ static void print_raw_text(char *p)
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input("\nAT#HELP\n");
         while (cat_service(&at) != 0) {};
@@ -541,5 +541,5 @@ int main(int argc, char **argv)
         assert(var_buf[3] == 0x04);
         assert(strcmp(var_string, "abc") == 0);
 
-	return 0;
+        return 0;
 }

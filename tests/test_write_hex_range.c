@@ -51,14 +51,14 @@ static int cmd_write(const struct cat_command *cmd, const uint8_t *data, const s
 static int var1_write(const struct cat_variable *var, size_t write_size)
 {
         assert(write_size == 1);
-        var1b = *(uint8_t*)(var->data);        
+        var1b = *(uint8_t*)(var->data);
         return 0;
 }
 
 static int var2_write(const struct cat_variable *var, size_t write_size)
 {
         assert(write_size == 2);
-        var2b = *(uint16_t*)(var->data);        
+        var2b = *(uint16_t*)(var->data);
         return 0;
 }
 
@@ -165,13 +165,13 @@ static const char test_case_3[] = "\nAT+SET=0x0,0x0,0\nAT+SET=0x0,0x0,0x00000000
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0x0 CMD:0x01 CMD:0x0ff") == 0);
 
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0x1,0x00 CMD:0x2,0xFFf CMD:0x3,0xFFFF") == 0);
 
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_3);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(write_results, " CMD:0x0,0x0,0x0000000000000 CMD:0x0,0x0,0x1 CMD:0x0,0x0,0xffffFFFF") == 0);
 
@@ -208,5 +208,5 @@ int main(int argc, char **argv)
         assert(var3 == 0xFFFFFFFF);
         assert(var3b == var3);
 
-	return 0;
+        return 0;
 }

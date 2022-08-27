@@ -169,9 +169,9 @@ static const char test_case_1[] = "\nAT\r\nAT\nATAP=?\nATAP=?a\nATAP=a\nATAPW=?\
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -179,5 +179,5 @@ int main(int argc, char **argv)
         assert(strcmp(ack_results, "\r\nOK\r\n\nOK\n\nAP=\n\nOK\n\nERROR\n\nOK\n\nOK\n\nERROR\n\nA=A-val\n\nOK\n\nERROR\n") == 0);
         assert(strcmp(test_results, " AP:AP AP_W:AP APW:APW +TEST:+TEST A:A") == 0);
 
-	return 0;
+        return 0;
 }

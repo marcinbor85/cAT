@@ -125,7 +125,7 @@ static cat_return_state scan_read(const struct cat_command *cmd, uint8_t *data, 
         scan_index++;
         if (scan_index > max)
                 return CAT_RETURN_STATE_HOLD_EXIT_OK;
-        
+
         load_scan_results(scan_index);
         cat_trigger_unsolicited_read(&at, &scan_cmd);
 
@@ -239,7 +239,7 @@ static struct cat_io_interface iface = {
 int main(int argc, char **argv)
 {
         /* initializing */
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         /* main loop with exit code conditions */
         while ((cat_service(&at) != 0) && (quit_flag == 0)) {};
@@ -247,5 +247,5 @@ int main(int argc, char **argv)
         /* goodbye message */
         printf("Bye!\n");
 
-	return 0;
+        return 0;
 }

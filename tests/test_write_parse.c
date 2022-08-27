@@ -187,9 +187,9 @@ static const char test_case_3[] = "\nAT+SETALL=-11,-22,-33\nAT+SETALL=-1,-2,-3\n
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -230,5 +230,5 @@ int main(int argc, char **argv)
         assert(var2b == -2);
         assert(var3b == -3);
 
-	return 0;
+        return 0;
 }

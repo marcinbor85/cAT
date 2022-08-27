@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 {
         cat_status s;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
 
@@ -199,5 +199,5 @@ int main(int argc, char **argv)
         assert(strcmp(read_results, " read:+U1CMD read:+CMD read:+U2CMD") == 0);
         assert(strcmp(var_read_results, " var_read:U1 var_read:X var_read:U2") == 0);
 
-	return 0;
+        return 0;
 }

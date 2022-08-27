@@ -134,13 +134,13 @@ static const char test_case_2[] = "\nAT+SET=\"12345678\"\nAT+SET=\"\"\nAT+SET=\"
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nERROR\n\nOK\n\r\nOK\r\n") == 0);
         assert(strcmp(write_results, " CMD:\"\\\"abcd\\\"\" CMD:\"1122334\" CMD:\"t\"") == 0);
 
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 
         prepare_input(test_case_2);
         while (cat_service(&at) != 0) {};
-        
+
         assert(strcmp(ack_results, "\nERROR\n\nOK\n\nOK\n\nOK\n") == 0);
         assert(strcmp(write_results, " CMD:\"\" CMD:\"\\\\\\\\\" CMD:\"r1\\nr2\\n\"") == 0);
 
@@ -164,5 +164,5 @@ int main(int argc, char **argv)
         assert(var_write_size[2] == 6);
         assert(var_write_size[3] == 0);
 
-	return 0;
+        return 0;
 }

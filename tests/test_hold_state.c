@@ -216,7 +216,7 @@ int main(int argc, char **argv)
 {
         cat_status s;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -225,5 +225,5 @@ int main(int argc, char **argv)
         assert(strcmp(cmd_results, " write:+CMD read1:+U1CMD read1:+U1CMD read1:+U1CMD write:+CMD read2:+U2CMD read2:+U2CMD read2:+U2CMD read2:+U2CMD") == 0);
         assert(strcmp(var_read_results, " var_read:U1 var_read:U1 var_read:U1 var_read:U2 var_read:U2 var_read:U2 var_read:U2") == 0);
 
-	return 0;
+        return 0;
 }

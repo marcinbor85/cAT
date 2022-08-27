@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 {
         cat_status s;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
 
@@ -234,5 +234,5 @@ int main(int argc, char **argv)
         s = cat_is_unsolicited_buffer_full(&at);
         assert(s == CAT_STATUS_OK);
 
-	return 0;
+        return 0;
 }

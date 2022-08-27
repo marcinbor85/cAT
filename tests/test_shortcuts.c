@@ -135,15 +135,15 @@ static void print_raw_text(char *p)
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
 
         assert(strcmp(ack_results, "\nOK\n\nERROR\n\nERROR\n\nERROR\n\nERROR\n\nOK\n\nERROR\n\nOK\n\nOK\n\nOK\n\nOK\n\nOK\n\nOK\n\nOK\n") == 0);
         assert(strcmp(run_results, "+TEST +TEST_A +TEST_B +ONE +ONE +ONE +TWO +TWO ") == 0);
-        
-	return 0;
+
+        return 0;
 }

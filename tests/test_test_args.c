@@ -426,9 +426,9 @@ static const char test_case_3[] = "\nAT+ZZ=?\nAT+ZZ2=?\nAT+ZZ3=?\r\n";
 
 int main(int argc, char **argv)
 {
-	struct cat_object at;
+        struct cat_object at;
 
-	cat_init(&at, &desc, &iface, NULL);
+        cat_init(&at, &desc, &iface, NULL);
 
         prepare_input(test_case_1);
         while (cat_service(&at) != 0) {};
@@ -455,5 +455,5 @@ int main(int argc, char **argv)
 
         assert(strcmp(ack_results, "\ntest1\n\nOK\n\ntest1\n\nOK\n\r\n+ZZ3=\r\nzz3_desctest2\r\n\r\nOK\r\n") == 0);
 
-	return 0;
+        return 0;
 }
