@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include "cat.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
@@ -325,7 +326,6 @@ static void ack_error(struct cat_object *self)
 
         strncpy(get_atcmd_buf(self), "ERROR", get_atcmd_buf_size(self));
         start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
-        return;
 }
 
 static void ack_ok(struct cat_object *self)
@@ -334,7 +334,6 @@ static void ack_ok(struct cat_object *self)
 
         strncpy(get_atcmd_buf(self), "OK", get_atcmd_buf_size(self));
         start_flush_io_buffer(self, CAT_STATE_AFTER_FLUSH_RESET);
-        return;
 }
 
 static size_t get_left_buffer_space_by_fsm(struct cat_object *self, cat_fsm_type fsm)
