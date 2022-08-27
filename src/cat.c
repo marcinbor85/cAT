@@ -772,12 +772,12 @@ static uint8_t get_cmd_state(struct cat_object *self, size_t i)
         assert(self != NULL);
         assert(i < self->commands_num);
 
+        if (is_command_disable(self, i) != false)
+                return CAT_CMD_STATE_NOT_MATCH;
+
         s = get_atcmd_buf(self)[i >> 2];
         s >>= (i % 4) << 1;
         s &= 0x03;
-
-        if (is_command_disable(self, i) != false)
-                return CAT_CMD_STATE_NOT_MATCH;
 
         return s;
 }
