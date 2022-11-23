@@ -472,8 +472,14 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
 
                 self->commands_num += cmd_group->cmd_num;
 
-                for (j = 0; j < cmd_group->cmd_num; j++)
+                for (j = 0; j < cmd_group->cmd_num; j++) {
                         assert(cmd_group->cmd[j].name != NULL);
+                        if (cmd_group->cmd[j].implicit_write) {
+                                assert(cmd_group->cmd[j].read == NULL);
+                                assert(cmd_group->cmd[j].run == NULL);
+                                assert(cmd_group->cmd[j].test == NULL);
+                        }
+                }
         }
 
         assert(desc->buf != NULL);
@@ -484,6 +490,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
         self->mutex = mutex;
         self->hold_state_flag = false;
         self->hold_exit_status = 0;
+        self->implicit_write_flag = false;
 
         reset_state(self);
 
@@ -815,12 +822,28 @@ static cat_status update_command(struct cat_object *self)
                         set_cmd_state(self, self->index, CAT_CMD_STATE_NOT_MATCH);
                 } else if (self->length == cmd_name_len) {
                         set_cmd_state(self, self->index, CAT_CMD_STATE_FULL_MATCH);
+
+                        if (cmd->implicit_write)
+                        {
+                                self->implicit_write_flag = true;
+                        }
                 }
         }
 
         if (++self->index >= self->commands_num) {
                 self->index = 0;
-                self->state = CAT_STATE_PARSE_COMMAND_CHAR;
+
+                if (!self->implicit_write_flag)
+                {
+                        self->state = CAT_STATE_PARSE_COMMAND_CHAR;
+                }
+                else
+                {
+                        self->cmd_type = CAT_CMD_TYPE_WRITE;
+                        prepare_search_command(self);
+                        self->state = CAT_STATE_SEARCH_COMMAND;
+                        self->implicit_write_flag = false;
+                }
         }
 
         return CAT_STATUS_BUSY;
@@ -1889,7 +1912,7 @@ static cat_status parse_command_args(struct cat_object *self)
                 break;
         default:
                 if ((self->length == 0) && (self->current_char == '?')) {
-                        if ((self->cmd->test != NULL) || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) {
+                        if (((self->cmd->test != NULL) || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) && !self->cmd->implicit_write) {
                                 self->cmd_type = CAT_CMD_TYPE_TEST;
                                 self->state = CAT_STATE_WAIT_TEST_ACKNOWLEDGE;
                                 break;

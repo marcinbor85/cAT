@@ -252,6 +252,7 @@ struct cat_command {
         bool need_all_vars; /* flag to need all vars parsing */
         bool only_test; /* flag to disable read/write/run commands (only test auto description) */
         bool disable; /* flag to completely disable command */
+        bool implicit_write; /* flag to mark command as implicit write */
 };
 
 struct cat_command_group {
@@ -350,6 +351,7 @@ struct cat_object {
         char const *write_buf; /* working buffer pointer used for asynch writing to io */
         int write_state; /* before, data, after flush io write state */
         cat_state write_state_after; /* parser state to set after flush io write */
+        bool implicit_write_flag; /* flag that implicit write was detected */
 
         struct cat_unsolicited_fsm unsolicited_fsm;
 };
