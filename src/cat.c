@@ -2196,6 +2196,7 @@ static cat_return_state call_cmd_read_by_fsm(struct cat_object *self, cat_fsm_ty
         default:
                 assert(false);
         }
+        return CAT_RETURN_STATE_ERROR;
 }
 
 static cat_status process_read_loop(struct cat_object *self, cat_fsm_type fsm)
@@ -2270,6 +2271,7 @@ static cat_return_state call_cmd_test_by_fsm(struct cat_object *self, cat_fsm_ty
         default:
                 assert(false);
         }
+        return CAT_RETURN_STATE_ERROR;
 }
 
 static cat_status process_test_loop(struct cat_object *self, cat_fsm_type fsm)
@@ -2407,6 +2409,7 @@ struct cat_variable const* cat_search_variable_by_name(struct cat_object *self, 
 {
         size_t i;
         struct cat_variable const *var;
+        (void)self;
 
         assert(self != NULL);
         assert(cmd != NULL);
