@@ -568,7 +568,7 @@ static void prepare_search_command(struct cat_object *self)
 
 static int is_valid_cmd_name_char(const char ch)
 {
-        return (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '+') || (ch == '#') || (ch == '$') || (ch == '@') || (ch == '_');
+        return (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '+') || (ch == '#') || (ch == '$') || (ch == '@') || (ch == '_') || (ch == '%') || (ch == '&');
 }
 
 static int is_valid_dec_char(const char ch)
