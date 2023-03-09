@@ -474,7 +474,7 @@ void cat_init(struct cat_object *self, const struct cat_descriptor *desc, const 
 
                 for (j = 0; j < cmd_group->cmd_num; j++) {
                         assert(cmd_group->cmd[j].name != NULL);
-                        if (cmd_group->cmd[j].implicit_write) {
+                        if (cmd_group->cmd[j].implicit_write != false) {
                                 assert(cmd_group->cmd[j].read == NULL);
                                 assert(cmd_group->cmd[j].run == NULL);
                                 assert(cmd_group->cmd[j].test == NULL);
@@ -823,22 +823,17 @@ static cat_status update_command(struct cat_object *self)
                 } else if (self->length == cmd_name_len) {
                         set_cmd_state(self, self->index, CAT_CMD_STATE_FULL_MATCH);
 
-                        if (cmd->implicit_write)
-                        {
+                        if (cmd->implicit_write != false)
                                 self->implicit_write_flag = true;
-                        }
                 }
         }
 
         if (++self->index >= self->commands_num) {
                 self->index = 0;
 
-                if (!self->implicit_write_flag)
-                {
+                if (self->implicit_write_flag == false) {
                         self->state = CAT_STATE_PARSE_COMMAND_CHAR;
-                }
-                else
-                {
+                } else {
                         self->cmd_type = CAT_CMD_TYPE_WRITE;
                         prepare_search_command(self);
                         self->state = CAT_STATE_SEARCH_COMMAND;
@@ -1912,7 +1907,7 @@ static cat_status parse_command_args(struct cat_object *self)
                 break;
         default:
                 if ((self->length == 0) && (self->current_char == '?')) {
-                        if (((self->cmd->test != NULL) || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) && !self->cmd->implicit_write) {
+                        if (((self->cmd->test != NULL) || ((self->cmd->var != NULL) && (self->cmd->var_num > 0))) && (self->cmd->implicit_write == false)) {
                                 self->cmd_type = CAT_CMD_TYPE_TEST;
                                 self->state = CAT_STATE_WAIT_TEST_ACKNOWLEDGE;
                                 break;
