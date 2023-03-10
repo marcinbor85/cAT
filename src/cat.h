@@ -69,7 +69,8 @@ typedef enum {
         CAT_STATUS_ERROR = -1,
         CAT_STATUS_OK = 0,
         CAT_STATUS_BUSY = 1,
-        CAT_STATUS_HOLD = 2
+        CAT_STATUS_HOLD = 2,
+        CAT_STATUS_AGAIN = 3
 } cat_status;
 
 /**
