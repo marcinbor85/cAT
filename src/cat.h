@@ -32,6 +32,9 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#if CONFIG_LIB_CAT_USRDATA
+#include "cat_usrdata.h"
+#endif
 
 /* only forward declarations (looks for definition below) */
 struct cat_command;
