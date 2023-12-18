@@ -1073,10 +1073,12 @@ static int parse_int_decimal(struct cat_object *self, int64_t *ret)
 
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
-
-                if ((ok != 0) && ((ch == 0) || (ch == ','))) {
+                if (((ch == 0) || (ch == ','))) {
                         val *= sign;
                         *ret = val;
+                        if(ok==0){
+                                return 2;
+                        }
                         return (ch == ',') ? 1 : 0;
                 }
 
@@ -1118,8 +1120,11 @@ static int parse_uint_decimal(struct cat_object *self, uint64_t *ret)
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
 
-                if ((ok != 0) && ((ch == 0) || (ch == ','))) {
+                if (((ch == 0) || (ch == ','))) {
                         *ret = val;
+                        if(ok==0){
+                                return 2;
+                        }
                         return (ch == ',') ? 1 : 0;
                 }
 
@@ -1154,7 +1159,9 @@ static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
                 }
 
                 if (state == 0) {
-                        if (ch != '0')
+                        if(ch == ',') 
+                                return 2; 
+                        else if (ch != '0')
                                 return -1;
                         state = 1;
                 } else if (state == 1) {
@@ -1188,11 +1195,14 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
                 ch = get_atcmd_buf(self)[self->position++];
                 ch = to_upper(ch);
 
-                if ((size > 0) && (state == 0) && ((ch == 0) || (ch == ','))) {
+                if ((state == 0) && ((ch == 0) || (ch == ','))) {
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 self->write_size = 0;
                         } else {
                                 self->write_size = size;
+                        }
+                        if(size == 0){
+                                return 2;
                         }
                         return (ch == ',') ? 1 : 0;
                 }
@@ -1233,6 +1243,8 @@ static int parse_buffer_string(struct cat_object *self)
 
                 switch (state) {
                 case 0:
+                        if(ch != ',')
+                                return 2;
                         if (ch != '"')
                                 return -1;
                         state = 1;
@@ -1376,7 +1388,7 @@ static cat_status parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
-                if (validate_int_range(self, val) != 0) {
+                if (stat<2 && validate_int_range(self, val) != 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
@@ -1387,7 +1399,7 @@ static cat_status parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
-                if (validate_uint_range(self, val) != 0) {
+                if (stat<2 && validate_uint_range(self, val) != 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
@@ -1398,7 +1410,7 @@ static cat_status parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
-                if (validate_uint_range(self, val) != 0) {
+                if (stat<2 && validate_uint_range(self, val) != 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
@@ -1421,7 +1433,7 @@ static cat_status parse_write_args(struct cat_object *self)
                 return CAT_STATUS_ERROR;
         }
 
-        if ((self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
+        if (stat<2 && (self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
                 ack_error(self);
                 return CAT_STATUS_BUSY;
         }
