@@ -47,6 +47,7 @@ typedef enum {
         CAT_VAR_INT_DEC = 0, /* decimal encoded signed integer variable */
         CAT_VAR_UINT_DEC, /* decimal encoded unsigned integer variable */
         CAT_VAR_NUM_HEX, /* hexadecimal encoded unsigned integer variable */
+        CAT_VAR_UINT_HEX,//Hexa if starts with 0x else uint
         CAT_VAR_BUF_HEX, /* asciihex encoded bytes array */
         CAT_VAR_BUF_STRING /* string variable */
 } cat_var_type;

@@ -83,14 +83,14 @@ static int print_cmd_list(const struct cat_command *cmd)
 
 static struct cat_variable data_spi[] = {
         {
-                .type = CAT_VAR_NUM_HEX,
+                .type = CAT_VAR_UINT_HEX,
                 .data = &(spi_cmd.address),
                 .data_size = sizeof(spi_cmd.address),
                 .write = SpiResetIndex,
                 .name = "address",
                 .access = CAT_VAR_ACCESS_READ_WRITE
         }, {
-                .type = CAT_VAR_INT_DEC,
+                .type = CAT_VAR_UINT_HEX,
                 .data = &(spi_cmd.data),
                 .data_size = sizeof(spi_cmd.data),
                 .write = SpiSetIndex,
