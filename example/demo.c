@@ -87,7 +87,6 @@ static struct cat_variable data_spi[] = {
                 .data = &(spi_cmd.address),
                 .data_size = sizeof(spi_cmd.address),
                 .write = SpiResetIndex,
-				//.read = spi_read,
                 .name = "address",
                 .access = CAT_VAR_ACCESS_READ_WRITE
         }, {
@@ -95,7 +94,6 @@ static struct cat_variable data_spi[] = {
                 .data = &(spi_cmd.data),
                 .data_size = sizeof(spi_cmd.data),
                 .write = SpiSetIndex,
-				//.read = spi_read,
                 .name = "data",
                 .access = CAT_VAR_ACCESS_READ_WRITE
         }
@@ -105,8 +103,6 @@ static struct cat_command cmds[] = {
 		{
                 .name           = "+SPI",
                 .description    = "Fill SPI buffer",
-                //.write          = spi_write,
-                //.read           = spi_read,
                 .var            = data_spi,
                 .var_num        = sizeof(data_spi) / sizeof(data_spi[0]),
                 .need_all_vars = false
