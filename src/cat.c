@@ -1378,6 +1378,7 @@ static cat_status parse_write_args(struct cat_object *self)
 {
         int64_t val;
         cat_status stat;
+        uint8_t position;
 
         assert(self != NULL);
         switch (self->var->type) {
@@ -1404,9 +1405,10 @@ static cat_status parse_write_args(struct cat_object *self)
                 }
                 break;
         case CAT_VAR_UINT_HEX:
+                position=self->position;
                 stat = parse_num_hexadecimal(self, (uint64_t *)&val);
                 if (stat < 0) {
-                        self->position--;
+                        self->position=position;
                         stat = parse_uint_decimal(self, (uint64_t *)&val);
                         if (stat < 0) {
                                 ack_error(self);
