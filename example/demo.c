@@ -43,7 +43,7 @@ struct spi_cmd_t {
 struct spi_cmd_t spi_cmd; 
 
 
-static int spi_write(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num) {
+static int spi_write(const struct cat_command *cmd) {
 	if(spi_cmd.data_set_with_address == 0) {
 		printf("Set data before write\n");
 		return -1;
@@ -53,18 +53,18 @@ static int spi_write(const struct cat_command *cmd, const uint8_t *data, const s
 	return 0;
 }
 
-static int spi_read(const struct cat_command *var, uint8_t *data, size_t *data_size, const size_t max_data_size) {
+static int spi_read(const struct cat_command *cmd) {
         printf("READ SPI\n");
 		printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data, spi_cmd.data);
         return 0;
 }
 
-static int SpiResetIndex(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num) {
+static int SpiResetIndex(const struct cat_variable *var, size_t write_size) {
 	spi_cmd.data_set_with_address = 0;
 	return 0;
 }
 
-static int SpiSetIndex(const struct cat_command *cmd, const uint8_t *data, const size_t data_size, const size_t args_num) {
+static int SpiSetIndex(const struct cat_variable *var, size_t write_size) {
 	spi_cmd.data_set_with_address = 1;
 	return 0;
 }
