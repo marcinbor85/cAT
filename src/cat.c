@@ -1243,7 +1243,7 @@ static int parse_buffer_string(struct cat_object *self)
 
                 switch (state) {
                 case 0:
-                        if(ch != ',')
+                        if(ch == ',')
                                 return 2;
                         if (ch != '"')
                                 return -1;
@@ -1406,7 +1406,7 @@ static cat_status parse_write_args(struct cat_object *self)
         case CAT_VAR_UINT_HEX:
                 stat = parse_num_hexadecimal(self, (uint64_t *)&val);
                 if (stat < 0) {
-                        self->position=0;
+                        self->position--;
                         stat = parse_uint_decimal(self, (uint64_t *)&val);
                         if (stat < 0) {
                                 ack_error(self);

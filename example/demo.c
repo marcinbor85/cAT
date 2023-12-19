@@ -49,13 +49,13 @@ static int spi_write(const struct cat_command *cmd, const uint8_t *data, const s
 		return -1;
 	}
 	printf("WRITE SPI\n");
-	printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data);
+	printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data, spi_cmd.data);
 	return 0;
 }
 
 static int spi_read(const struct cat_command *var, uint8_t *data, size_t *data_size, const size_t max_data_size) {
         printf("READ SPI\n");
-		printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data);
+		printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data, spi_cmd.data);
         return 0;
 }
 
