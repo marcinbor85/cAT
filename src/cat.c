@@ -1414,10 +1414,6 @@ static cat_status parse_write_args(struct cat_object *self)
                                 ack_error(self);
                                 return CAT_STATUS_BUSY;
                         }
-                        if (stat<2 && validate_uint_range(self, val) != 0) {
-                                ack_error(self);
-                                return CAT_STATUS_BUSY;
-                        }
                 }
                 if (stat<2 && validate_uint_range(self, val) != 0) {
                         ack_error(self);
