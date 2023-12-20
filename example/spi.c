@@ -37,35 +37,26 @@ static bool quit_flag;
 struct spi_cmd_t {
 	uint8_t address;
 	uint16_t data;
-	unsigned char data_set_with_address;
+	uint16_t mask;
 };
 
 struct spi_cmd_t spi_cmd; 
 
 
 static int spi_write(const struct cat_command *cmd) {
-	if(spi_cmd.data_set_with_address == 0) {
-		printf("Set data before write\n");
-		return -1;
-	}
 	printf("WRITE SPI\n");
-	printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data, spi_cmd.data);
+	printf("Address=0x%02hx, Value=%d(0x%04hx) with mask=%04hx\n", spi_cmd.address, (spi_cmd.data&spi_cmd.mask), (spi_cmd.data&spi_cmd.mask), spi_cmd.mask);
 	return 0;
 }
 
 static int spi_read(const struct cat_command *cmd) {
         printf("READ SPI\n");
-		printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data, spi_cmd.data);
+        printf("Address=0x%02hx, Value=%d(0x%04hx)\n", spi_cmd.address, spi_cmd.data, spi_cmd.data);
         return 0;
 }
 
-static int SpiResetIndex(const struct cat_variable *var, size_t write_size) {
-	spi_cmd.data_set_with_address = 0;
-	return 0;
-}
-
-static int SpiSetIndex(const struct cat_variable *var, size_t write_size) {
-	spi_cmd.data_set_with_address = 1;
+static int SpiResetMask(const struct cat_variable *var, size_t write_size) {
+	spi_cmd.mask = 0xffff;
 	return 0;
 }
 
@@ -81,42 +72,56 @@ static int print_cmd_list(const struct cat_command *cmd)
         return CAT_RETURN_STATE_PRINT_CMD_LIST_OK;
 }
 
-static struct cat_variable data_spi[] = {
+static struct cat_variable data_spi_write[] = {
         {
                 .type = CAT_VAR_UINT_HEX,
                 .data = &(spi_cmd.address),
                 .data_size = sizeof(spi_cmd.address),
-                .write = SpiResetIndex,
                 .name = "address",
                 .access = CAT_VAR_ACCESS_READ_WRITE
         }, {
                 .type = CAT_VAR_UINT_HEX,
                 .data = &(spi_cmd.data),
                 .data_size = sizeof(spi_cmd.data),
-                .write = SpiSetIndex,
+                .write = SpiResetMask,
                 .name = "data",
+                .access = CAT_VAR_ACCESS_READ_WRITE
+        }, {
+                .type = CAT_VAR_UINT_HEX,
+                .data = &(spi_cmd.mask),
+                .data_size = sizeof(spi_cmd.mask),
+                .name = "mask",
+                .access = CAT_VAR_ACCESS_READ_WRITE
+        }
+};
+
+static struct cat_variable data_spi_read[] = {
+        {
+                .type = CAT_VAR_UINT_HEX,
+                .data = &(spi_cmd.address),
+                .data_size = sizeof(spi_cmd.address),
+                .name = "address",
                 .access = CAT_VAR_ACCESS_READ_WRITE
         }
 };
 
 static struct cat_command cmds[] = {
-		{
-                .name           = "+SPI",
-                .description    = "Fill SPI buffer",
-                .var            = data_spi,
-                .var_num        = sizeof(data_spi) / sizeof(data_spi[0]),
-                .need_all_vars = false
-		},
-		{
-                .name           = "+SPIR",
-                .description    = "Read SPI from buffer",
-                .run           = spi_read
-		},
-		{
-                .name           = "+SPIW",
-                .description    = "Write SPI from buffer",
-                .run            = spi_write
-		},
+        {
+        .name           = "+SPIW",
+        //.description    = "Write to SPI",
+        .var            = data_spi_write,
+        .var_num        = sizeof(data_spi_write) / sizeof(data_spi_write[0]),
+        .need_all_vars  = false,
+        .write            = spi_write
+        },
+        {
+        .name           = "+SPIR",
+        .description    = "Read from SPI",
+        .var            = data_spi_read,
+        .var_num        = sizeof(data_spi_read) / sizeof(data_spi_read[0]),
+        .need_all_vars = true,
+        .write           = spi_read
+        },
         {
                 .name = "#HELP",
                 .run = print_cmd_list,
