@@ -209,3 +209,11 @@ while (1) {
 }
 
 ```
+
+## Enable DEBUG
+
+Define DEBUG preprocessor and add *-g* argument for debug
+
+```cmake -DCMAKE_BUILD_TYPE=Debug .
+```
+
