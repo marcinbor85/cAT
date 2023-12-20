@@ -7,16 +7,27 @@ set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 
 add_compile_options("$<$<CONFIG:DEBUG>:-g>")
+add_compile_options("$<$<CONFIG:TEST>:-v;-g;-coverage;-fprofile-arcs;-ftest-coverage>")
+
+add_link_options("$<$<CONFIG:TEST>:-v;-coverage>")
 
 enable_testing( )
 
 include_directories( ${PROJECT_SOURCE_DIR}/src )
 
 file( GLOB SRC_FILES src/*.c )
+
 add_library( cat SHARED ${SRC_FILES} )
 target_include_directories(cat INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src)
+
 set_target_properties( cat PROPERTIES VERSION 0.10.1 SOVERSION 1 )
 target_compile_options( cat PRIVATE -Werror -Wall -Wextra -pedantic )
+
+message("-- cmake binary dir: ${CMAKE_BINARY_DIR}")
+message("-- project source dir: ${PROJECT_SOURCE_DIR}")
+message("-- src files: ${SRC_FILES}")
+message("-- cmake current list dir: ${CMAKE_CURRENT_LIST_DIR}")
+message("-- cmake runtime output dir: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 install( TARGETS cat DESTINATION lib )
 install( FILES src/cat.h DESTINATION include/cat )
@@ -30,6 +41,9 @@ target_link_libraries( basic cat )
 add_executable( unsolicited example/unsolicited.c )
 # target_compile_options(unsolicited PRIVATE -g)
 target_link_libraries( unsolicited cat )
+
+add_executable( spi example/spi.c )
+target_link_libraries( spi cat )
 
 add_executable( test_parse tests/test_parse.c )
 target_link_libraries( test_parse cat )
@@ -151,6 +165,32 @@ add_executable( test_implicit_write tests/test_implicit_write.c )
 target_link_libraries( test_implicit_write cat )
 add_test( test_implicit_write ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_implicit_write )
 
+add_executable( test_write_uhex tests/test_write_uhex.c )
+target_link_libraries( test_write_uhex cat )
+add_test( test_write_uhex ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_write_uhex )
+
 add_custom_target( check COMMAND ${CMAKE_CTEST_COMMAND} --verbose )
-add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing/ )
+add_custom_target( cleanall COMMAND rm -rf Makefile CMakeCache.txt CMakeFiles/ bin/ lib/ cmake_install.cmake CTestTestfile.cmake Testing coverage/ )
 add_custom_target( uninstall COMMAND xargs rm < install_manifest.txt )
+
+# Create the gcov target. Run coverage tests with 'make gcov'
+add_custom_target(gcov    
+    COMMAND mkdir -p coverage
+    COMMAND lcov --zerocounters --directory ./CMakeFiles/cat.dir/src
+    COMMAND lcov --capture --initial --directory ./CMakeFiles/cat.dir/src --output-file ./coverage/coverage.lcov
+    COMMAND ${CMAKE_MAKE_PROGRAM} test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+add_custom_command(TARGET gcov
+    COMMAND echo "=================== GCOV ===================="
+    COMMAND cd CMakeFiles/cat.dir/src
+    COMMAND gcov -w -c -d -m cat.c.gcno
+    COMMAND cd ${PROJECT_SOURCE_DIR}
+    COMMAND lcov -c --directory ./CMakeFiles/cat.dir/src --output-file ./coverage/coverage.lcov
+    COMMAND mkdir -p coverage/html
+    COMMAND genhtml ./coverage/coverage.lcov -o ./coverage/html
+    )
+
+add_dependencies(gcov cat)
+# Make sure to clean up the coverage folder
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES coverage)

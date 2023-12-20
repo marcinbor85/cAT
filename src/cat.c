@@ -1073,10 +1073,12 @@ static int parse_int_decimal(struct cat_object *self, int64_t *ret)
 
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
-
-                if ((ok != 0) && ((ch == 0) || (ch == ','))) {
+                if (((ch == 0) || (ch == ','))) {
                         val *= sign;
                         *ret = val;
+                        if(ok==0){
+                                return 2;
+                        }
                         return (ch == ',') ? 1 : 0;
                 }
 
@@ -1117,9 +1119,11 @@ static int parse_uint_decimal(struct cat_object *self, uint64_t *ret)
 
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
-
-                if ((ok != 0) && ((ch == 0) || (ch == ','))) {
+                if (((ch == 0) || (ch == ','))) {
                         *ret = val;
+                        if(ok==0){
+                                return 2;
+                        }
                         return (ch == ',') ? 1 : 0;
                 }
 
@@ -1154,7 +1158,9 @@ static int parse_num_hexadecimal(struct cat_object *self, uint64_t *ret)
                 }
 
                 if (state == 0) {
-                        if (ch != '0')
+                        if(ch == ',') 
+                                return 2; 
+                        else if (ch != '0')
                                 return -1;
                         state = 1;
                 } else if (state == 1) {
@@ -1184,15 +1190,19 @@ static int parse_buffer_hexadecimal(struct cat_object *self)
         int state = 0;
         size_t size = 0;
 
+
         while (1) {
                 ch = get_atcmd_buf(self)[self->position++];
                 ch = to_upper(ch);
 
-                if ((size > 0) && (state == 0) && ((ch == 0) || (ch == ','))) {
+                if ((state == 0) && ((ch == 0) || (ch == ','))) {
                         if (self->var->access == CAT_VAR_ACCESS_READ_ONLY) {
                                 self->write_size = 0;
                         } else {
                                 self->write_size = size;
+                        }
+                        if(size == 0){
+                                return 2;
                         }
                         return (ch == ',') ? 1 : 0;
                 }
@@ -1233,6 +1243,8 @@ static int parse_buffer_string(struct cat_object *self)
 
                 switch (state) {
                 case 0:
+                        if(ch == ',')
+                                return 2;
                         if (ch != '"')
                                 return -1;
                         state = 1;
@@ -1366,9 +1378,9 @@ static cat_status parse_write_args(struct cat_object *self)
 {
         int64_t val;
         cat_status stat;
+        uint8_t position;
 
         assert(self != NULL);
-
         switch (self->var->type) {
         case CAT_VAR_INT_DEC:
                 stat = parse_int_decimal(self, &val);
@@ -1376,7 +1388,7 @@ static cat_status parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
-                if (validate_int_range(self, val) != 0) {
+                if (stat<2 && validate_int_range(self, val) != 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
@@ -1387,7 +1399,23 @@ static cat_status parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
-                if (validate_uint_range(self, val) != 0) {
+                if (stat<2 && validate_uint_range(self, val) != 0) {
+                        ack_error(self);
+                        return CAT_STATUS_BUSY;
+                }
+                break;
+        case CAT_VAR_UINT_HEX:
+                position=self->position;
+                stat = parse_num_hexadecimal(self, (uint64_t *)&val);
+                if (stat < 0) {
+                        self->position=position;
+                        stat = parse_uint_decimal(self, (uint64_t *)&val);
+                        if (stat < 0) {
+                                ack_error(self);
+                                return CAT_STATUS_BUSY;
+                        }
+                }
+                if (stat<2 && validate_uint_range(self, val) != 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
@@ -1398,7 +1426,7 @@ static cat_status parse_write_args(struct cat_object *self)
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
-                if (validate_uint_range(self, val) != 0) {
+                if (stat<2 && validate_uint_range(self, val) != 0) {
                         ack_error(self);
                         return CAT_STATUS_BUSY;
                 }
@@ -1421,7 +1449,7 @@ static cat_status parse_write_args(struct cat_object *self)
                 return CAT_STATUS_ERROR;
         }
 
-        if ((self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
+        if (stat<2 && (self->var->write != NULL) && (self->var->write(self->var, self->write_size) != 0)) {
                 ack_error(self);
                 return CAT_STATUS_BUSY;
         }
@@ -1696,6 +1724,21 @@ static int format_info_type(struct cat_object *self, cat_fsm_type fsm)
                         return -1;
                 }
                 break;
+        case CAT_VAR_UINT_HEX:
+                switch (var->data_size) {
+                case 1:
+                        strcpy(var_type, "U/Hx8");
+                        break;
+                case 2:
+                        strcpy(var_type, "U/Hx16");
+                        break;
+                case 4:
+                        strcpy(var_type, "U/Hx32");
+                        break;
+                default:
+                        return -1;
+                }
+                break;
         case CAT_VAR_NUM_HEX:
                 switch (var->data_size) {
                 case 1:
@@ -1800,6 +1843,9 @@ static cat_status format_read_args(struct cat_object *self, cat_fsm_type fsm)
                 break;
         case CAT_VAR_UINT_DEC:
                 stat = format_uint_decimal(self, fsm);
+                break;
+        case CAT_VAR_UINT_HEX:
+                stat = format_num_hexadecimal(self, fsm);
                 break;
         case CAT_VAR_NUM_HEX:
                 stat = format_num_hexadecimal(self, fsm);

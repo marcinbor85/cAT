@@ -209,3 +209,22 @@ while (1) {
 }
 
 ```
+
+## Enable DEBUG
+
+Define DEBUG preprocessor and add *-g* argument for debug
+
+```sh
+cmake -DCMAKE_BUILD_TYPE=Debug .
+```
+
+ ## Run code coverage
+
+```sh
+cmake -DCMAKE_BUILD_TYPE=Test .
+make
+make gcov
+```
+
+The coverage is available in [./coverage/html/index.html](coverage/html/index.html)
+
