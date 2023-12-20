@@ -214,6 +214,4 @@ while (1) {
 
 Define DEBUG preprocessor and add *-g* argument for debug
 
-```cmake -DCMAKE_BUILD_TYPE=Debug .
-```
-
+    cmake -DCMAKE_BUILD_TYPE=Debug .
